@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
+using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 using Defectively;
 using Defectively.Extension;
+using Defectively.UI;
 using DefectivelyServer.Internal;
 using DefectivelyServer.Management;
 using Microsoft.WindowsAPICodePack.Taskbar;
@@ -17,7 +20,7 @@ namespace DefectivelyServer.Forms
         private delegate void DSetServerAddress(string address);
         private delegate void DDisplayForm(Form form);
         private delegate void DRefreshAccounts();
-
+        
         public enum AccountState
         {
             Offline,
@@ -29,6 +32,7 @@ namespace DefectivelyServer.Forms
 
         public bool ConsoleLocked { get; set; }
         private bool ServerIsRunning;
+        private int Timeout { get; set; }
 
         private int YCoordinate;
 
@@ -51,10 +55,19 @@ namespace DefectivelyServer.Forms
                 Window.ShowDialog();
             };
 
+            tmrLoginTimeout.Tick += OnTimeout;
 
-            button1.Click += (sender, e) => ExtensionPool.Server.PrintToConsole("This is a demo success.\n", Server.Success);
-            button2.Click += (sender, e) => ExtensionPool.Server.PrintToConsole("This is a demo warning.\n", Server.Warning2);
-            button3.Click += (sender, e) => ExtensionPool.Server.PrintToConsole("This is a demo error.\n", Server.Error2);
+            cmsToolbar.RenderMode = ToolStripRenderMode.Professional;
+            cmsToolbar.Renderer = new ToolStripProfessionalRenderer(new ToolStripColorTable());
+        }
+
+        private void OnTimeout(object sender, EventArgs e) {
+            Timeout++;
+            if (Timeout == Storage.Configuration.Helper.GetConfig().CATimeoutTime) {
+                tmrLoginTimeout.Stop();
+                var Window = new LoginWindow();
+                Window.ShowTimeoutDialog(this);
+            }
         }
 
         private void btnSend_Click(object sender, EventArgs e) {
@@ -68,35 +81,63 @@ namespace DefectivelyServer.Forms
                 Server.Lockdown = !Server.Lockdown;
             }
 
-
+            if (tbxInput.Text == "/n") {
+                var Notification = new Notification("Firefox", "Firefox does no longer support your stupidness. Please use Opera instead.", 2000, Empty);
+                Server.ShowNotification(Notification);
+            }
+            
             tbxInput.Clear();
         }
 
+        private void Empty() { }
+
         private void MainWindow_Load(object sender, EventArgs e) {
-            // Start TimeoutTimer
+            if (Storage.Configuration.Helper.GetConfig().ConsoleAuthentificationTimeout) {
+                tmrLoginTimeout.Start();
+            }
+
+            // DEMO
+            var Window = new ExtensionWindow();
+            Window.Show();
+
+
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
             StopServer();
+
+            ntiNotification.ShowBalloonTip(2000, "Defectively Server", "Thanks for using Defectively.", ToolTipIcon.None);
+            ntiNotification = null;
+
             Application.Exit();
         }
 
         private void BtnStartServer_Click(object sender, EventArgs e) {
             if (!ServerIsRunning) {
                 if (StartServer()) {
-                    btnStartServer.Text = "Server stoppen";
+                    btnStartServer.Text = "Stop Server";
                     SetTaskbarBackground(TaskbarProgressBarState.Normal);
                     DisplayAccounts();
                 }
             } else {
                 StopServer();
-                btnStartServer.Text = "Server starten";
+                btnStartServer.Text = "Start Server";
             }
         }
 
         private bool StartServer() {
+            rtbConsole.Clear();
+            //rtbConsole.SelectionAlignment = HorizontalAlignment.Center;
+            //rtbConsole.SelectionFont = new Font("Segoe UI", 11f);
+            //rtbConsole.SelectionColor = Color.FromArgb(0, 91, 243);
+            //rtbConsole.AppendText("\nDefectively Server\nMade by Väinämö Lumikero\n\n");
+            //rtbConsole.SelectionFont = new Font("Consolas", 10f);
+            //rtbConsole.SelectionAlignment = HorizontalAlignment.Left;
+
             Server = new Server();
 
+            Server.Notify = ntiNotification;
+            
             Eskaemo.BeginSession();
 
             ExtensionPool.RegisterServer(Server);
@@ -106,6 +147,14 @@ namespace DefectivelyServer.Forms
             Server.DisplayFormEvent += DisplayFormEvent;
             Server.RefreshAccounts += RefreshAccounts;
             ServerIsRunning = Server.Start();
+
+            if (ServerIsRunning) {
+                this.Text += $" - {Server.Config.MetaServerName}";
+
+                ntiNotification.ShowBalloonTip(2000, "Defectively Server", $"The server is up and running on {lblServerAddress.Text}.", ToolTipIcon.None);
+
+            }
+
             return ServerIsRunning;
         }
 
@@ -113,12 +162,17 @@ namespace DefectivelyServer.Forms
             try {
                 Server.Stop();
             } catch { }
+            this.Text = "Defectively Server";
             ServerIsRunning = false;
             SetTaskbarBackground(TaskbarProgressBarState.Error);
         }
 
         private void ConsoleMessageReceived(string content) {
-            Invoke(new DAppendText(AppendText), content);
+            try {
+                Invoke(new DAppendText(AppendText), content);
+            } catch {
+                Application.Exit();
+            }
         }
 
         private void AppendText(string content) {
@@ -127,7 +181,11 @@ namespace DefectivelyServer.Forms
         }
 
         private void ConsoleColorChanged(Color foreground, Color background) {
-            Invoke(new DChangeColor(ChangeColor), foreground, background);
+            try {
+                Invoke(new DChangeColor(ChangeColor), foreground, background);
+            } catch {
+                Application.Exit();
+            }
         }
 
         private void ChangeColor(Color foreground, Color background) {
@@ -235,12 +293,20 @@ namespace DefectivelyServer.Forms
             var Status = new DoubleBufferedPanel();
             Status.Size = new Size(20, 20);
             Status.Location = new Point(Panel.Width - 35, 15);
-            var Banned = PunishmentManager.CheckForRecords(accountName, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily) != "-1";
-            if (Banned) {
-                Status.State = AccountState.Banned;
-            } else {
-                Status.State = online ? AccountState.Online : AccountState.Offline;
-            }
+
+
+
+            // TODO
+            //var Banned = PunishmentManager.CheckForRecords(accountName, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily) != "-1";
+            //if (Banned) {
+            //    Status.State = AccountState.Banned;
+            //} else {
+            //    Status.State = online ? AccountState.Online : AccountState.Offline;
+            //}
+
+
+            Status.State = online ? AccountState.Online : AccountState.Offline;
+
             Status.Paint += StatusElementPaint;
             Panel.Controls.Add(Status);
             if (online && Server.Connections.Count > 0) {
@@ -248,7 +314,9 @@ namespace DefectivelyServer.Forms
                 Label2.ForeColor = Color.DimGray;
                 Label2.Padding = new Padding(3);
                 Label2.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
-                Label2.Text = $"in {Server.Connections.Find(c => c.Owner.Name == accountName).Channel.Name}";
+                try {
+                    Label2.Text = $"in {Server.Connections.Find(c => c.Owner.Name == accountName).Channel.Name}";
+                } catch { }
                 Label2.AutoSize = true;
                 Label2.BackColor = Color.White;
                 Label2.Location = new Point(Label.Width + 21, 15);
@@ -271,6 +339,7 @@ namespace DefectivelyServer.Forms
                 Brush = new SolidBrush(ColorTranslator.FromHtml("#FC3539"));
             }
             e.Graphics.FillEllipse(Brush, new RectangleF(0, 0, 19F, 19F));
+            Brush.Dispose();
         }
     }
 }

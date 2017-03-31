@@ -1,4 +1,8 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Windows.Forms;
 
 namespace DefectivelyServer.Forms
@@ -12,10 +16,16 @@ namespace DefectivelyServer.Forms
         }
 
         private void OnDbpContainerPaint(object sender, PaintEventArgs e) {
-            var Rect = new Rectangle(0, 0, dbpContainer.Width, 40);
-            e.Graphics.FillRectangle(new SolidBrush(Color.WhiteSmoke), Rect);
-            Rect.Offset(7, 0);
-            e.Graphics.DrawString("MazeRunnerExtension.dll", new Font("Segoe UI", 10f), new SolidBrush(Color.Black), Rect, new StringFormat { LineAlignment = StringAlignment.Center });
+            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+
+            var Latest = Color.CornflowerBlue;
+            for (int i = 0; i < 4; i++) {
+                e.Graphics.FillRectangle(new SolidBrush(Latest), 0, i * 100, dbpContainer.Width, 100);
+                Latest = ControlPaint.Dark(Latest, 0.1F);
+            }
+
+            BringToFront();
         }
     }
 }

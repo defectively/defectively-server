@@ -17,6 +17,11 @@ namespace DefectivelyServer.Management
             MoveAccountTo(channel.OwnerId, channel.Id);
         }
 
+        public static void AddChannel(Channel channel) {
+            Server.Channels.Add(channel);
+            ListenerManager.InvokeEvent(Event.ChannelCreated, channel.Id);
+        }
+
         public static void CloseChannel(Channel channel) {
             MoveAllFromTo(channel.Id, "defectively");
             Server.Channels.Remove(channel);

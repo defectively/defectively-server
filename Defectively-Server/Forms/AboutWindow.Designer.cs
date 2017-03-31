@@ -32,11 +32,11 @@
             this.lblCoreVersion = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.label6 = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.label11 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             this.panel1.SuspendLayout();
@@ -121,6 +121,31 @@
             this.tableLayoutPanel1.Size = new System.Drawing.Size(410, 205);
             this.tableLayoutPanel1.TabIndex = 5;
             // 
+            // label6
+            // 
+            this.label6.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.label6.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.label6.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.label6.Location = new System.Drawing.Point(208, 136);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(199, 69);
+            this.label6.TabIndex = 9;
+            this.label6.Text = "Väinämö Lumikero\r\n@vainamov";
+            this.label6.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // label5
+            // 
+            this.label5.BackColor = System.Drawing.Color.White;
+            this.label5.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.label5.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.label5.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(91)))), ((int)(((byte)(243)))));
+            this.label5.Location = new System.Drawing.Point(3, 136);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(199, 69);
+            this.label5.TabIndex = 9;
+            this.label5.Text = "Created by";
+            this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(91)))), ((int)(((byte)(243)))));
@@ -152,35 +177,10 @@
             this.label8.ForeColor = System.Drawing.Color.Gainsboro;
             this.label8.Location = new System.Drawing.Point(4, 8);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(145, 15);
+            this.label8.Size = new System.Drawing.Size(156, 15);
             this.label8.TabIndex = 16;
-            this.label8.Text = "Defected is part of Festival";
+            this.label8.Text = "Defectively is part of Festival";
             this.label8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // label5
-            // 
-            this.label5.BackColor = System.Drawing.Color.White;
-            this.label5.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label5.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.label5.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(91)))), ((int)(((byte)(243)))));
-            this.label5.Location = new System.Drawing.Point(3, 136);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(199, 69);
-            this.label5.TabIndex = 9;
-            this.label5.Text = "Created by";
-            this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // label6
-            // 
-            this.label6.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.label6.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label6.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label6.Location = new System.Drawing.Point(208, 136);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(199, 69);
-            this.label6.TabIndex = 9;
-            this.label6.Text = "Väinämö Lumikero\r\n@vainamov";
-            this.label6.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // AboutWindow
             // 

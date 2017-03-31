@@ -12,6 +12,9 @@ using Defectively;
 using Defectively.Command;
 using Defectively.Compatibility;
 using Defectively.Extension;
+using Defectively.Authentication;
+using Defectively.UI;
+using DefectivelyServer.Forms;
 using DefectivelyServer.Management;
 using DefectivelyServer.Storage.Database;
 using Newtonsoft.Json;
@@ -58,6 +61,9 @@ namespace DefectivelyServer.Internal
         private Thread WaitingThread;
         private bool ExitThreadOnPurpose;
 
+        public NotifyIcon Notify { get; set; }
+        private Delegate NotifyCallback;
+
         private bool CancelMessageHandling;
         private Queue<MessagePacket> MessageQueue = new Queue<MessagePacket>();
         private Dictionary<string, Command> Commands = new Dictionary<string, Command>();
@@ -75,6 +81,8 @@ namespace DefectivelyServer.Internal
         public static ConsoleStyle Error2 { get; } = new ConsoleStyle(Color.White, ColorTranslator.FromHtml("#FC3539"), ConsoleColor.White, ConsoleColor.Red);
 
         public bool Start() {
+            Notify.BalloonTipClicked += OnNotificationClicked;
+
             Eskaemo.Trace("Eskaemo started tracing.", "ESKM");
             ExtensionManager.Extensions.Clear();
             ListenerManager.Listeners.Clear();
@@ -181,7 +189,10 @@ namespace DefectivelyServer.Internal
             Commands.Add("lockdown", CLockdown);
             Commands.Add("debug", CDebug);
 
-            PunishmentManager.DisposeExceededRecords();
+
+            //PunishmentManager.DisposeExceededRecords();
+
+
             Connected?.Invoke($"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}");
             Eskaemo.Trace($"Defectively 2 Server started on {Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}.", "SRVR");
             ListenerManager.InvokeEvent(Event.ServerStarted, $"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}");
@@ -229,7 +240,10 @@ namespace DefectivelyServer.Internal
                         Connection.SetRawStreamContent(Cryptography.RSAEncrypt(JsonConvert.SerializeObject(GetMetaData()), PreServiceProvider));
 
                         Connection.Dispose();
-                        PunishmentManager.DisposeExceededRecords();
+
+
+                        //PunishmentManager.DisposeExceededRecords();
+
 
                     } else if (DRawStreamContent[0] == Enumerations.Action.HyperConnect.ToString()) {
 
@@ -250,25 +264,24 @@ namespace DefectivelyServer.Internal
                             var Account = Helper.GetAccount(AccountIdData[0]);
 
                             if (Account.Password == AuthData[1] && Account.AccountHasLuvaValue("defectively.hyperConnect")) {
-                                    Connection.Owner = HyperAccount;
-                                    Connection.Channel = Defectively;
-                                    Connections.Add(Connection);
-                                    var ListeningThread = new Thread(Listen);
-                                    ListeningThread.Start(Connection);
-                                    Connection.SessionId = PunishmentManager.GetRandomIdentifier(16);
-                                    Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
-                                    Defectively.MemberIds.Add(Account.Id);
-                                    ChannelManager.SendChannelList();
-                                
-                                    PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
-                                    Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
-                                    Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
+                                Connection.Owner = HyperAccount;
+                                Connection.Channel = Defectively;
+                                Connections.Add(Connection);
+                                var ListeningThread = new Thread(Listen);
+                                ListeningThread.Start(Connection);
+                                Connection.SessionId = Helpers.GenerateRandomId(16);
+                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
+                                Defectively.MemberIds.Add(Account.Id);
+                                ChannelManager.SendChannelList();
+
+                                PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
+                                Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
+                                Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
                             } else {
                                 Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} pretended to be \"{AuthData[0]}\" but didn't provided the correct password.", "NTWK");
                                 Eskaemo.TraceIndented($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} refused.");
                                 Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "authentificationFailed"));
                             }
-
                         } else {
                             Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} pretended to be \"{AuthData[0]}\" but this account is unknown.", "NTWK");
                             Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "accountUnknown"));
@@ -304,18 +317,20 @@ namespace DefectivelyServer.Internal
 
                                 ListenerManager.InvokeEvent(Event.ClientConnect, ((IPEndPoint) FClient.Client.RemoteEndPoint).Address.ToString(), AccountIdData[0], AccountIdData[1]);
 
-                                var PunishmentId = PunishmentManager.CheckForRecords(Account.Id, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily);
+                                // TODO
 
-                                if (PunishmentId != "-1") {
-                                    var Punishment = PunishmentManager.GetRecord(PunishmentId);
-                                    Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Banned.ToString(), JsonConvert.SerializeObject(Punishment)));
-                                } else {
+                                //var PunishmentId = PunishmentManager.CheckForRecords(Account.Id, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily);
+
+                                //if (PunishmentId != "-1") {
+                                    //var Punishment = PunishmentManager.GetRecord(PunishmentId);
+                                    //Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Banned.ToString(), JsonConvert.SerializeObject(Punishment)));
+                                //} else {
                                     Connection.Owner = Account;
                                     Connection.Channel = Defectively;
                                     Connections.Add(Connection);
                                     var ListeningThread = new Thread(Listen);
                                     ListeningThread.Start(Connection);
-                                    Connection.SessionId = PunishmentManager.GetRandomIdentifier(16);
+                                    Connection.SessionId = Helpers.GenerateRandomId(16);
                                     Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
                                     var LuvaValues = new List<string>();
                                     LuvaValues.AddRange(Connection.Owner.LuvaValues);
@@ -347,12 +362,63 @@ namespace DefectivelyServer.Internal
                                     Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
                                     RefreshAccounts?.Invoke();
                                     ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
-                                }
+                                //}
 
                             } else {
                                 Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} pretended to be \"{AuthData[0]}\" but didn't provided the correct password.", "NTWK");
                                 Eskaemo.TraceIndented($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} refused.");
                                 Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "authentificationFailed"));
+                            }
+                            
+                        } else if (AccountIdData[0].StartsWith("srvcs/")) {
+
+                            var AccountData = JsonConvert.DeserializeObject<SrvcsApiResult>(SrvcsApi.Call("profile", AccountIdData[0].Split('/')[1], AuthData[1]));
+
+                            if (AccountData.Result == "Data") {
+
+                                var Account = new Account {
+                                    Id = AccountIdData[0].Split('/')[1],
+                                    Name = AccountData.Name,
+                                    RankId = AccountData.RankId,
+                                    LuvaValues = new List<string>()
+                                };
+
+                                Connection.Owner = Account;
+                                Connection.Channel = Defectively;
+                                Connections.Add(Connection);
+                                var ListeningThread = new Thread(Listen);
+                                ListeningThread.Start(Connection);
+                                Connection.SessionId = Helpers.GenerateRandomId(16);
+                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
+                                var LuvaValues = new List<string>();
+                                LuvaValues.AddRange(Connection.Owner.LuvaValues);
+                                LuvaValues.AddRange(Database.Ranks.Find(r => r.Id == Connection.Owner.RankId).LuvaValues);
+                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetLuvaValues, JsonConvert.SerializeObject(LuvaValues)));
+                                Defectively.MemberIds.Add(Account.Id);
+                                ChannelManager.SendChannelList();
+                                var ExtensionPaths = new List<string>();
+                                ExtensionManager.Extensions.FindAll(e => e.ClientInstance).ForEach(e => ExtensionPaths.Add(e.Path));
+                                ExtensionPaths.ForEach(e => Connection.SetStreamContent(string.Join("|", Enumerations.Action.ExtensionTransport, JsonConvert.SerializeObject(File.ReadAllBytes(e)))));
+
+                                if (!CancelMessageHandling) {
+                                    var Message = new MessagePacket {
+                                        Time = DateTime.Now.ToShortTimeString(),
+                                        Type = Enumerations.MessageType.Center,
+                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) hat den Chat betreten."
+                                    };
+
+                                    SendMessagePacketToAll(Message);
+                                    Connection.Owner.Online = true;
+                                }
+                                CancelMessageHandling = false;
+
+                                SendPacketTo(Connection.Owner.Id, string.Join("|", Enumerations.Action.SetRankList, JsonConvert.SerializeObject(Database.Ranks)));
+                                SendPacketToAll(string.Join("|", Enumerations.Action.SetAccountList, JsonConvert.SerializeObject(GetAccountsWithoutPassword())));
+                                PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
+                                Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
+                                Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
+                                RefreshAccounts?.Invoke();
+                                ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
                             }
 
                         } else {
@@ -378,21 +444,24 @@ namespace DefectivelyServer.Internal
                     }
 
                     var Packet = Connection.GetStreamContent().Split('|');
-                    var PunishmentId = PunishmentManager.CheckForRecords(Connection.Owner.Id, Enumerations.PunishmentType.Mute);
+                    
+                    // TODO
 
-                    if (PunishmentId != "-1") {
-                        var RemainingTime = PunishmentManager.GetRecord(PunishmentId).EndDate.Subtract(DateTime.Now);
+                    //var PunishmentId = PunishmentManager.CheckForRecords(Connection.Owner.Id, Enumerations.PunishmentType.Mute);
 
-                        var Message = new MessagePacket {
-                            Time = DateTime.Now.ToShortTimeString(),
-                            Type = Enumerations.MessageType.Center,
-                            RankColor = "#FC3539",
-                            Content = $"Your mute still lasts {RemainingTime.Days} days, {RemainingTime.Hours} hours, {RemainingTime.Minutes} minutes and {RemainingTime.Seconds} seconds."
-                        };
+                    //if (PunishmentId != "-1") {
+                    //    var RemainingTime = PunishmentManager.GetRecord(PunishmentId).EndDate.Subtract(DateTime.Now);
 
-                        SendMessagePacketTo(Connection.Owner.Id, Message);
-                        continue;
-                    }
+                    //    var Message = new MessagePacket {
+                    //        Time = DateTime.Now.ToShortTimeString(),
+                    //        Type = Enumerations.MessageType.Center,
+                    //        RankColor = "#FC3539",
+                    //        Content = $"Your mute still lasts {RemainingTime.Days} days, {RemainingTime.Hours} hours, {RemainingTime.Minutes} minutes and {RemainingTime.Seconds} seconds."
+                    //    };
+
+                    //    SendMessagePacketTo(Connection.Owner.Id, Message);
+                    //    continue;
+                    //}
 
                     try {
                         var Type = (Enumerations.Action) Enum.Parse(typeof(Enumerations.Action), Packet[0]);
@@ -479,11 +548,11 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.RegisterRecord:
                             var Punishment = JsonConvert.DeserializeObject<Punishment>(Packet[1]);
                             Punishment.CreatorId = Connection.Owner.Id;
-                            Punishment.Id = PunishmentManager.GetRandomIdentifier(6);
-                            PunishmentManager.CreateRecord(Punishment);
+                            Punishment.Id = Helpers.GenerateRandomId(6);
+                            //PunishmentManager.CreateRecord(Punishment);
                             break;
                         case Enumerations.Action.Extension:
-                            var EventArgs = JsonConvert.DeserializeObject<EventArguments>(Packet[1]);
+                            var EventArgs = JsonConvert.DeserializeObject<DynamicEvent>(Packet[1]);
                             EventArgs.EndpointId = Connection.Owner.Id;
                             ListenerManager.InvokeSpecialEvent(EventArgs);
                             break;
@@ -675,10 +744,12 @@ namespace DefectivelyServer.Internal
             Connections.FindAll(c => c.Owner.Id != exceptId && c.Channel.Id == channelId).ForEach(c => c.SetStreamContent(string.Join("|", Enumerations.Action.Plain, JsonConvert.SerializeObject(packet))));
         }
 
+        // TODO
+
         public void CreatePunishment(Punishment punishment) {
             punishment.CreatorId = ServerAccount.Id;
-            punishment.Id = PunishmentManager.GetRandomIdentifier(6);
-            PunishmentManager.CreateRecord(punishment);
+            //punishment.Id = PunishmentManager.GetRandomIdentifier(6);
+            //PunishmentManager.CreateRecord(punishment);
         }
 
         public Account GetAccountById(string id) {
@@ -689,15 +760,18 @@ namespace DefectivelyServer.Internal
             return Database.Ranks.Find(r => r.Id == id);
         }
 
+        // TODO
+
         public Punishment GetPunishmentById(string id) {
-            return PunishmentManager.GetRecord(id);
+            //return PunishmentManager.GetRecord(id);
+            return null;
         }
 
         public void InvokeInternalEvent(Event e, params object[] args) {
             ListenerManager.InvokeEvent(e, args);
         }
 
-        public void InvokeEvent(EventArguments e) {
+        public void InvokeEvent(DynamicEvent e) {
             e.EndpointId = "server";
             ListenerManager.InvokeSpecialEvent(e);
         }
@@ -765,6 +839,37 @@ namespace DefectivelyServer.Internal
             Database.Accounts.Find(a => a.Id == Connection.Owner.Id).Online = online;
             SendPacketToAll(string.Join("|", Enumerations.Action.SetAccountList, JsonConvert.SerializeObject(GetAccountsWithoutPassword())));
             RefreshAccounts?.Invoke();
+        }
+
+        public void CreateChannel(string id, string name, bool hidden, IExtension extension) {
+            var Channel = new Channel {
+                Capacity = -1,
+                Id = id,
+                JoinRestrictionMode = hidden ? Enumerations.ChannelJoinMode.Protected : Enumerations.ChannelJoinMode.Default,
+                Name = name,
+                OwnerId = extension.Namespace
+            };
+            ChannelManager.AddChannel(Channel);
+        }
+
+        public void MoveAccountTo(string accountId, string channelId) {
+            ChannelManager.MoveAccountTo(accountId, channelId);
+        }
+
+        public void RemoveChannel(string id) {
+            ChannelManager.CloseChannel(Channels.Find(c => c.Id == id));
+        }
+
+        public void ShowNotification(Notification notification) {
+            NotifyCallback = notification.CallbackDelegate;
+            Notify.ShowBalloonTip(notification.Timeout, notification.Title, notification.Content, ToolTipIcon.None);
+            try {
+                Notify.Icon = Application.OpenForms.OfType<MainWindow>().ToList()[0].Icon;
+            } catch { }
+        }
+
+        private void OnNotificationClicked(object sender, EventArgs e) {
+            NotifyCallback.DynamicInvoke();
         }
 
         private List<Account> GetAccountsWithoutPassword() {

@@ -18,15 +18,15 @@ namespace DefectivelyServer.Management
             try {
                 Listeners.FindAll(l => l.Event == e).ForEach(l => l.Delegate.DynamicInvoke(args));
             } catch (Exception Ex) {
-                ExtensionPool.Server.PrintToConsole($"Exception:  {Ex.Message}\nStacktrace: {Ex.StackTrace}\n", Server.Error);
+                ExtensionPool.Server.PrintToConsole($"Exception:  {Ex.InnerException?.Message}\nStacktrace: {Ex.InnerException?.StackTrace}\n", Server.Error);
             }
         }
 
-        public static void InvokeSpecialEvent(EventArguments e) {
+        public static void InvokeSpecialEvent(DynamicEvent e) {
             try {
                 Listeners.FindAll(l => l.Event == Event.Dynamic).ForEach(l => l.Delegate.DynamicInvoke(e));
             } catch (Exception Ex) {
-                ExtensionPool.Server.PrintToConsole($"Exception:  {Ex.Message}\nStacktrace: {Ex.StackTrace}\n", Server.Error);
+                ExtensionPool.Server.PrintToConsole($"Exception:  {Ex.InnerException?.Message}\nStacktrace: {Ex.InnerException?.StackTrace}\n", Server.Error);
             }
         }
     }

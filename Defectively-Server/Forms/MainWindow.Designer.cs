@@ -33,9 +33,6 @@
             this.Panel5 = new System.Windows.Forms.Panel();
             this.btnSend = new System.Windows.Forms.Button();
             this.Panel1 = new System.Windows.Forms.Panel();
-            this.button3 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
             this.rtbConsole = new System.Windows.Forms.RichTextBox();
             this.pnlStatus = new System.Windows.Forms.Panel();
             this.lblAssembly = new System.Windows.Forms.Label();
@@ -44,11 +41,18 @@
             this.pnlAccounts = new System.Windows.Forms.Panel();
             this.tmrLoginTimeout = new System.Windows.Forms.Timer(this.components);
             this.Panel3 = new System.Windows.Forms.Panel();
+            this.ntiNotification = new System.Windows.Forms.NotifyIcon(this.components);
+            this.cmsToolbar = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.startServerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.stopServerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.demoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.Panel5.SuspendLayout();
             this.Panel1.SuspendLayout();
             this.pnlStatus.SuspendLayout();
             this.Panel6.SuspendLayout();
             this.Panel3.SuspendLayout();
+            this.cmsToolbar.SuspendLayout();
             this.SuspendLayout();
             // 
             // tbxInput
@@ -70,7 +74,7 @@
             this.btnStartServer.Name = "btnStartServer";
             this.btnStartServer.Size = new System.Drawing.Size(100, 25);
             this.btnStartServer.TabIndex = 0;
-            this.btnStartServer.Text = "Server starten";
+            this.btnStartServer.Text = "Start Server";
             this.btnStartServer.UseVisualStyleBackColor = true;
             // 
             // lblStatus
@@ -108,48 +112,12 @@
             // 
             // Panel1
             // 
-            this.Panel1.Controls.Add(this.button3);
-            this.Panel1.Controls.Add(this.button2);
-            this.Panel1.Controls.Add(this.button1);
             this.Panel1.Controls.Add(this.btnStartServer);
             this.Panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.Panel1.Location = new System.Drawing.Point(0, 0);
             this.Panel1.Name = "Panel1";
             this.Panel1.Size = new System.Drawing.Size(868, 46);
             this.Panel1.TabIndex = 8;
-            // 
-            // button3
-            // 
-            this.button3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(53)))), ((int)(((byte)(57)))));
-            this.button3.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.button3.Location = new System.Drawing.Point(330, 11);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(100, 25);
-            this.button3.TabIndex = 3;
-            this.button3.Text = "Invoke Error";
-            this.button3.UseVisualStyleBackColor = false;
-            // 
-            // button2
-            // 
-            this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(208)))), ((int)(((byte)(0)))));
-            this.button2.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.button2.Location = new System.Drawing.Point(224, 11);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(100, 25);
-            this.button2.TabIndex = 2;
-            this.button2.Text = "Invoke Warning";
-            this.button2.UseVisualStyleBackColor = false;
-            // 
-            // button1
-            // 
-            this.button1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(7)))), ((int)(((byte)(209)))), ((int)(((byte)(89)))));
-            this.button1.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.button1.Location = new System.Drawing.Point(118, 11);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(100, 25);
-            this.button1.TabIndex = 1;
-            this.button1.Text = "Invoke Success";
-            this.button1.UseVisualStyleBackColor = false;
             // 
             // rtbConsole
             // 
@@ -188,7 +156,7 @@
             this.lblAssembly.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
             this.lblAssembly.Size = new System.Drawing.Size(607, 29);
             this.lblAssembly.TabIndex = 2;
-            this.lblAssembly.Text = "F2S Version 2.0.4rc 17w1 (7FC1FBD)";
+            this.lblAssembly.Text = "Version";
             this.lblAssembly.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // lblServerAddress
@@ -221,6 +189,10 @@
             this.pnlAccounts.Size = new System.Drawing.Size(350, 487);
             this.pnlAccounts.TabIndex = 9;
             // 
+            // tmrLoginTimeout
+            // 
+            this.tmrLoginTimeout.Interval = 1000;
+            // 
             // Panel3
             // 
             this.Panel3.Controls.Add(this.Panel6);
@@ -230,6 +202,47 @@
             this.Panel3.Name = "Panel3";
             this.Panel3.Size = new System.Drawing.Size(518, 487);
             this.Panel3.TabIndex = 10;
+            // 
+            // ntiNotification
+            // 
+            this.ntiNotification.ContextMenuStrip = this.cmsToolbar;
+            this.ntiNotification.Icon = ((System.Drawing.Icon)(resources.GetObject("ntiNotification.Icon")));
+            this.ntiNotification.Text = "Defectively";
+            this.ntiNotification.Visible = true;
+            // 
+            // cmsToolbar
+            // 
+            this.cmsToolbar.BackColor = System.Drawing.Color.White;
+            this.cmsToolbar.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.startServerToolStripMenuItem,
+            this.stopServerToolStripMenuItem,
+            this.toolStripSeparator1,
+            this.demoToolStripMenuItem});
+            this.cmsToolbar.Name = "cmsToolbar";
+            this.cmsToolbar.Size = new System.Drawing.Size(153, 98);
+            // 
+            // startServerToolStripMenuItem
+            // 
+            this.startServerToolStripMenuItem.Name = "startServerToolStripMenuItem";
+            this.startServerToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.startServerToolStripMenuItem.Text = "Start Server";
+            // 
+            // stopServerToolStripMenuItem
+            // 
+            this.stopServerToolStripMenuItem.Name = "stopServerToolStripMenuItem";
+            this.stopServerToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.stopServerToolStripMenuItem.Text = "Stop Server";
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(149, 6);
+            // 
+            // demoToolStripMenuItem
+            // 
+            this.demoToolStripMenuItem.Name = "demoToolStripMenuItem";
+            this.demoToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.demoToolStripMenuItem.Text = "Demo";
             // 
             // MainWindow
             // 
@@ -252,6 +265,7 @@
             this.pnlStatus.ResumeLayout(false);
             this.Panel6.ResumeLayout(false);
             this.Panel3.ResumeLayout(false);
+            this.cmsToolbar.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -272,9 +286,12 @@
         internal System.Windows.Forms.Timer tmrLoginTimeout;
         internal System.Windows.Forms.Panel Panel3;
         internal System.Windows.Forms.Label lblAssembly;
-        internal System.Windows.Forms.Button button3;
-        internal System.Windows.Forms.Button button2;
-        internal System.Windows.Forms.Button button1;
+        private System.Windows.Forms.NotifyIcon ntiNotification;
+        private System.Windows.Forms.ContextMenuStrip cmsToolbar;
+        private System.Windows.Forms.ToolStripMenuItem startServerToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem stopServerToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private System.Windows.Forms.ToolStripMenuItem demoToolStripMenuItem;
     }
 }
 
