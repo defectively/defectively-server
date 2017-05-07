@@ -145,7 +145,12 @@ namespace DefectivelyServer.Internal
                 }
             }
 
+            var TotalExtensions = ExtensionManager.Extensions.Count;
+
             ExtensionManager.Extensions.RemoveAll(e => e.Disabled);
+
+            var Notification = new Notification("Extension System", $"Loaded {ExtensionManager.Extensions.Count} of {TotalExtensions} extensions.");
+            ShowNotification(Notification);
 
             foreach (var Extension in ExtensionManager.Extensions) {
                 if (Extension.StorageNeeded) {
@@ -196,9 +201,8 @@ namespace DefectivelyServer.Internal
             }
 
             Channels.RemoveAll(c => c.Persistent);
-            Channels.AddRange(Database.Channels);
             Channels.Add(Defectively);
-
+            Channels.AddRange(Database.Channels);
 
             var CClear = new Command("clear", "ml.festival.defectively");
             var CLockdown = new Command("lockdown", "ml.festival.defectively");
@@ -211,10 +215,12 @@ namespace DefectivelyServer.Internal
 
             //PunishmentManager.DisposeExceededRecords();
 
+            var Address = $"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}";
 
-            OnStarted(new StartEventArgs($"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}"));
-            Eskaemo.Trace($"Defectively 2 Server started on {Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}.", "SRVR");
-            ListenerManager.InvokeEvent(Event.ServerStarted, $"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}");
+            OnStarted(new StartEventArgs(Address));
+            Eskaemo.Trace($"Defectively Server started on {Address}.", "SRVR");
+            ListenerManager.InvokeEvent(Event.ServerStarted, Address);
+
             Running = true;
             return true;
         }
@@ -365,7 +371,7 @@ namespace DefectivelyServer.Internal
                                     var Message = new MessagePacket {
                                         Time = DateTime.Now.ToShortTimeString(),
                                         Type = Enumerations.MessageType.Center,
-                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) hat den Chat betreten."
+                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined the server."
                                     };
 
                                     SendMessagePacketToAll(Message);
@@ -423,7 +429,7 @@ namespace DefectivelyServer.Internal
                                     var Message = new MessagePacket {
                                         Time = DateTime.Now.ToShortTimeString(),
                                         Type = Enumerations.MessageType.Center,
-                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) hat den Chat betreten."
+                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined the server."
                                     };
 
                                     SendMessagePacketToAll(Message);
@@ -490,6 +496,7 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.Plain:
 
                             ListenerManager.InvokeEvent(Event.ClientMessageReceived, Connection.Owner.Id, Packet[1]);
+
                             if (CancelMessageHandling) {
                                 CancelMessageHandling = false;
                                 continue;
@@ -641,7 +648,7 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.CloseChannel:
                             var ChannelToClose = Channels.Find(c => c.Id == Packet[1]);
 
-                            if (ChannelToClose != null && (Connection.Owner.AccountHasLuvaValue("defectively.canCloseChannels") || ChannelToClose.OwnerId == Connection.Owner.Id)) {
+                            if (ChannelToClose != null && (Connection.Owner.AccountHasLuvaValue("defectively.canCloseChannels") || ChannelToClose.OwnerId == Connection.Owner.Id) && ChannelToClose.Id != "defectively") {
                                 ChannelManager.CloseChannel(ChannelToClose);
                             } else {
                                 SendLuvaNotice("defectively.canCloseChannels", Connection);
@@ -660,7 +667,7 @@ namespace DefectivelyServer.Internal
                     } catch {
                         // Syntax Error in Command
                         Eskaemo.Trace($"Received a message from \"{Connection.Owner.Id}\" that couldn't be interpreted!", "EXCP");
-                        Eskaemo.TraceIndented($"Content: {Packet}");
+                        Eskaemo.TraceIndented($"Content: {Packet[1]}");
                     }
                 } catch {
                     ListenerManager.InvokeEvent(Event.ClientDisconnected, Connection.Owner.Id);
@@ -669,7 +676,7 @@ namespace DefectivelyServer.Internal
                     var Message = new MessagePacket {
                         Time = DateTime.Now.ToShortTimeString(),
                         Type = Enumerations.MessageType.Center,
-                        Content = $"{Connection.Owner.Name} disconnected."
+                        Content = $"{Connection.Owner.Name} disconnected from the server."
                     };
 
                     SendMessagePacketToAll(Message);
@@ -862,17 +869,23 @@ namespace DefectivelyServer.Internal
                 Id = id,
                 JoinRestrictionMode = hidden ? Enumerations.ChannelJoinMode.Protected : Enumerations.ChannelJoinMode.Default,
                 Name = name,
-                OwnerId = extension.Namespace
+                OwnerId = extension.Namespace,
+                Hidden = hidden
             };
             ChannelManager.AddChannel(Channel);
+            ChannelManager.SendChannelList();
         }
 
         public void MoveAccountTo(string accountId, string channelId) {
             ChannelManager.MoveAccountTo(accountId, channelId);
         }
 
-        public void RemoveChannel(string id) {
-            ChannelManager.CloseChannel(Channels.Find(c => c.Id == id));
+        public void RemoveChannel(string id, IExtension extension) {
+            var Channel = Channels.Find(c => c.Id == id);
+            if (Channel != null && Channel.Id != "defectively" && Channel.OwnerId == extension.Namespace) {
+                ChannelManager.CloseChannel(Channels.Find(c => c.Id == id));
+            }
+            ChannelManager.SendChannelList();
         }
 
         public void ShowNotification(Notification notification) {
@@ -884,7 +897,7 @@ namespace DefectivelyServer.Internal
         }
 
         private void OnNotificationClicked(object sender, EventArgs e) {
-            NotificationCallback.DynamicInvoke();
+            NotificationCallback?.DynamicInvoke();
         }
 
         private List<Account> GetAccountsWithoutPassword() {

@@ -5,6 +5,7 @@ using Defectively;
 using Defectively.Extension;
 using DefectivelyServer.Forms;
 using DefectivelyServer.Internal;
+using DefectivelyServer.Storage.Database;
 using Newtonsoft.Json;
 
 namespace DefectivelyServer.Management
@@ -19,6 +20,10 @@ namespace DefectivelyServer.Management
 
         public static void AddChannel(Channel channel) {
             Server.Channels.Add(channel);
+            if (channel.Persistent) {
+                Server.Database.Channels.Add(channel);
+                Storage.Database.Helper.Save();
+            }
             ListenerManager.InvokeEvent(Event.ChannelCreated, channel.Id);
         }
 
@@ -28,7 +33,15 @@ namespace DefectivelyServer.Management
         }
 
         public static void SendChannelList() {
-            Server.Connections.ForEach(c => c.SetStreamContent(string.Join("|", Enumerations.Action.SetChannelList, JsonConvert.SerializeObject(Server.Channels))));
+            var AllChannels = JsonConvert.SerializeObject(Server.Channels);
+            var NonHiddenChannels = JsonConvert.SerializeObject(Server.Channels.FindAll(c => !c.Hidden));
+            Server.Connections.ForEach(c => {
+                if (c.Owner.AccountHasLuvaValue("defectively.canSeeHiddenChannels")) {
+                    c.SetStreamContent(string.Join("|", Enumerations.Action.SetChannelList, AllChannels));
+                } else {
+                    c.SetStreamContent(string.Join("|", Enumerations.Action.SetChannelList, NonHiddenChannels));
+                }
+            });
         }
 
         public static void MoveAccountTo(Account account, Channel channel) {

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
+using Defectively.Compatibility;
 using DefectivelyServer.Internal;
 
 namespace DefectivelyServer.Management
@@ -52,8 +54,8 @@ namespace DefectivelyServer.Management
                 var Trace = File.ReadAllLines(Path.Combine(TracesPath, TraceFile)).ToList();
 
                 Trace.Add("=========== Session Begin ===========");
-                // Trace.Add($"Version: F2S {new Version().ToMediumString()}");
-                // Trace.Add($"CoreVersion: F2C {new Defectively.Compatibility.Version().ToMediumString()}");
+                Trace.Add($"Defectively Server Version {VersionHelper.GetFullStringFromAssembly(Assembly.GetExecutingAssembly())}");
+                Trace.Add($"based on Defectively Version {VersionHelper.GetFullStringFromCore()}");
                 Trace.Add($"Start: {SessionStart.ToLongTimeString()}");
                 Trace.Add("=====================================");
                 Trace.Add("");

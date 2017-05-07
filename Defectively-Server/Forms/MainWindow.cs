@@ -75,8 +75,19 @@ namespace DefectivelyServer.Forms
             }
 
             if (tbxInput.Text == "/n") {
-                var Notification = new Notification("Firefox", "Firefox does no longer support your stupidness. Please use Opera instead.", 2000, Empty);
+                var Notification = new Notification("Notification Provider", "Clicking this notification will do absolutely nothing.", 2000, Empty);
                 Server.ShowNotification(Notification);
+            }
+
+            if (tbxInput.Text == "/c") {
+                var Channel = new Channel {
+                    Id = "team",
+                    JoinRestrictionMode = Enumerations.ChannelJoinMode.Default,
+                    Name = "Festival Team",
+                    OwnerId = "vainamo",
+                    Persistent = true
+                };
+                ChannelManager.AddChannel(Channel);
             }
 
             tbxInput.Clear();
@@ -136,23 +147,25 @@ namespace DefectivelyServer.Forms
         }
 
         private void Server_AccountListChanged(object sender, EventArgs e) {
-            pnlAccounts.Controls.Clear();
-            YCoordinate = 0;
-            var Database = Server.Database;
-            foreach (var Rank in Database.Ranks) {
-                var Header = GetHeaderPanel(Rank.Name, ColorTranslator.FromHtml(Rank.Color));
-                Header.Location = new Point(0, YCoordinate);
-                YCoordinate += 20;
-                pnlAccounts.Controls.Add(Header);
-                var Accounts = Database.Accounts.FindAll(a => a.RankId == Rank.Id);
-                foreach (var Account in Accounts) {
-                    var Item = GetItemPanel(Account.Name, ColorTranslator.FromHtml(Rank.Color), Account.Online);
-                    Item.Location = new Point(0, YCoordinate);
-                    YCoordinate += 51;
-                    pnlAccounts.Controls.Add(Item);
+            this.Invoke(new Action(() => {
+                pnlAccounts.Controls.Clear();
+                YCoordinate = 0;
+                var Database = Server.Database;
+                foreach (var Rank in Database.Ranks) {
+                    var Header = GetHeaderPanel(Rank.Name, ColorTranslator.FromHtml(Rank.Color));
+                    Header.Location = new Point(0, YCoordinate);
+                    YCoordinate += 20;
+                    pnlAccounts.Controls.Add(Header);
+                    var Accounts = Database.Accounts.FindAll(a => a.RankId == Rank.Id);
+                    foreach (var Account in Accounts) {
+                        var Item = GetItemPanel(Account.Name, ColorTranslator.FromHtml(Rank.Color), Account.Online);
+                        Item.Location = new Point(0, YCoordinate);
+                        YCoordinate += 51;
+                        pnlAccounts.Controls.Add(Item);
+                    }
+                    YCoordinate -= 1;
                 }
-                YCoordinate -= 1;
-            }
+            }));
         }
 
         private void Server_FormCreated(object sender, FormCreatedEventArgs e) {
@@ -164,15 +177,19 @@ namespace DefectivelyServer.Forms
         }
 
         private void Server_ConsoleMessageReceived(object sender, ConsoleMessageEventArgs e) {
-            rtbConsole.AppendText(e.Message);
-            rtbConsole.ScrollToCaret();
+            this.Invoke(new Action(() => {
+                rtbConsole.AppendText(e.Message);
+                rtbConsole.ScrollToCaret();
+            }));
         }
 
         private void Server_ConsoleColorChanged(object sender, ConsoleColorEventArgs e) {
-            rtbConsole.SelectionStart = rtbConsole.TextLength;
-            rtbConsole.SelectionLength = 0;
-            rtbConsole.SelectionColor = e.Foreground;
-            rtbConsole.SelectionBackColor = e.Background;
+            this.Invoke(new Action(() => {
+                rtbConsole.SelectionStart = rtbConsole.TextLength;
+                rtbConsole.SelectionLength = 0;
+                rtbConsole.SelectionColor = e.Foreground;
+                rtbConsole.SelectionBackColor = e.Background;
+            }));
         }
 
         public void StopServer() {
