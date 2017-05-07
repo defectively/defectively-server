@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.IO;
-using System.Runtime.Remoting.Messaging;
+using System.Reflection;
 using System.Windows.Forms;
 using Defectively;
+using Defectively.Compatibility;
 using Defectively.Extension;
 using Defectively.UI;
+using DefectivelyServer.EventArguments;
 using DefectivelyServer.Internal;
 using DefectivelyServer.Management;
 using Microsoft.WindowsAPICodePack.Taskbar;
@@ -15,12 +16,6 @@ namespace DefectivelyServer.Forms
 {
     public partial class MainWindow : Form
     {
-        private delegate void DAppendText(string content);
-        private delegate void DChangeColor(Color foreground, Color background);
-        private delegate void DSetServerAddress(string address);
-        private delegate void DDisplayForm(Form form);
-        private delegate void DRefreshAccounts();
-        
         public enum AccountState
         {
             Offline,
@@ -49,7 +44,7 @@ namespace DefectivelyServer.Forms
                 }
             };
             btnSend.Click += btnSend_Click;
-            lblAssembly.Text = $"Defectively Server Version {new Version().ToMediumString()} / Defectively Version {new Defectively.Compatibility.Version().ToMediumString()}";
+            lblAssembly.Text = $"Defectively Server Version {VersionHelper.GetFullStringFromAssembly(Assembly.GetExecutingAssembly())} / Defectively Version {VersionHelper.GetFullStringFromCore()}";
             lblAssembly.Click += (sender, e) => {
                 var Window = new AboutWindow();
                 Window.ShowDialog();
@@ -71,9 +66,7 @@ namespace DefectivelyServer.Forms
         }
 
         private void btnSend_Click(object sender, EventArgs e) {
-            // Extension Management
-            ListenerManager.InvokeEvent(Event.ConsoleInputReceived,  tbxInput.Text);
-            //End
+            ListenerManager.InvokeEvent(Event.ConsoleInputReceived, tbxInput.Text);
 
 
             // DEMO
@@ -85,7 +78,7 @@ namespace DefectivelyServer.Forms
                 var Notification = new Notification("Firefox", "Firefox does no longer support your stupidness. Please use Opera instead.", 2000, Empty);
                 Server.ShowNotification(Notification);
             }
-            
+
             tbxInput.Clear();
         }
 
@@ -95,12 +88,6 @@ namespace DefectivelyServer.Forms
             if (Storage.Configuration.Helper.GetConfig().ConsoleAuthentificationTimeout) {
                 tmrLoginTimeout.Start();
             }
-
-            // DEMO
-            var Window = new ExtensionWindow();
-            Window.Show();
-
-
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
@@ -117,7 +104,7 @@ namespace DefectivelyServer.Forms
                 if (StartServer()) {
                     btnStartServer.Text = "Stop Server";
                     SetTaskbarBackground(TaskbarProgressBarState.Normal);
-                    DisplayAccounts();
+                    RefreshAccountList();
                 }
             } else {
                 StopServer();
@@ -127,35 +114,65 @@ namespace DefectivelyServer.Forms
 
         private bool StartServer() {
             rtbConsole.Clear();
-            //rtbConsole.SelectionAlignment = HorizontalAlignment.Center;
-            //rtbConsole.SelectionFont = new Font("Segoe UI", 11f);
-            //rtbConsole.SelectionColor = Color.FromArgb(0, 91, 243);
-            //rtbConsole.AppendText("\nDefectively Server\nMade by Väinämö Lumikero\n\n");
-            //rtbConsole.SelectionFont = new Font("Consolas", 10f);
-            //rtbConsole.SelectionAlignment = HorizontalAlignment.Left;
 
-            Server = new Server();
+            Server = new Server { NotificationProvider = ntiNotification };
 
-            Server.Notify = ntiNotification;
-            
             Eskaemo.BeginSession();
 
             ExtensionPool.RegisterServer(Server);
-            Server.Connected += Connected;
-            Server.ConsoleColorChanged += ConsoleColorChanged;
-            Server.ConsoleMessageReceived += ConsoleMessageReceived;
-            Server.DisplayFormEvent += DisplayFormEvent;
-            Server.RefreshAccounts += RefreshAccounts;
+            Server.Started += Server_Started;
+            Server.ConsoleColorChanged += Server_ConsoleColorChanged;
+            Server.ConsoleMessageReceived += Server_ConsoleMessageReceived;
+            Server.FormCreated += Server_FormCreated;
+            Server.AccountListChanged += Server_AccountListChanged;
             ServerIsRunning = Server.Start();
 
             if (ServerIsRunning) {
                 this.Text += $" - {Server.Config.MetaServerName}";
-
                 ntiNotification.ShowBalloonTip(2000, "Defectively Server", $"The server is up and running on {lblServerAddress.Text}.", ToolTipIcon.None);
-
             }
 
             return ServerIsRunning;
+        }
+
+        private void Server_AccountListChanged(object sender, EventArgs e) {
+            pnlAccounts.Controls.Clear();
+            YCoordinate = 0;
+            var Database = Server.Database;
+            foreach (var Rank in Database.Ranks) {
+                var Header = GetHeaderPanel(Rank.Name, ColorTranslator.FromHtml(Rank.Color));
+                Header.Location = new Point(0, YCoordinate);
+                YCoordinate += 20;
+                pnlAccounts.Controls.Add(Header);
+                var Accounts = Database.Accounts.FindAll(a => a.RankId == Rank.Id);
+                foreach (var Account in Accounts) {
+                    var Item = GetItemPanel(Account.Name, ColorTranslator.FromHtml(Rank.Color), Account.Online);
+                    Item.Location = new Point(0, YCoordinate);
+                    YCoordinate += 51;
+                    pnlAccounts.Controls.Add(Item);
+                }
+                YCoordinate -= 1;
+            }
+        }
+
+        private void Server_FormCreated(object sender, FormCreatedEventArgs e) {
+            e.Form.Show();
+        }
+
+        private void Server_Started(object sender, StartEventArgs e) {
+            lblServerAddress.Text = e.IPAddress;
+        }
+
+        private void Server_ConsoleMessageReceived(object sender, ConsoleMessageEventArgs e) {
+            rtbConsole.AppendText(e.Message);
+            rtbConsole.ScrollToCaret();
+        }
+
+        private void Server_ConsoleColorChanged(object sender, ConsoleColorEventArgs e) {
+            rtbConsole.SelectionStart = rtbConsole.TextLength;
+            rtbConsole.SelectionLength = 0;
+            rtbConsole.SelectionColor = e.Foreground;
+            rtbConsole.SelectionBackColor = e.Background;
         }
 
         public void StopServer() {
@@ -165,50 +182,6 @@ namespace DefectivelyServer.Forms
             this.Text = "Defectively Server";
             ServerIsRunning = false;
             SetTaskbarBackground(TaskbarProgressBarState.Error);
-        }
-
-        private void ConsoleMessageReceived(string content) {
-            try {
-                Invoke(new DAppendText(AppendText), content);
-            } catch {
-                Application.Exit();
-            }
-        }
-
-        private void AppendText(string content) {
-            rtbConsole.AppendText(content);
-            rtbConsole.ScrollToCaret();
-        }
-
-        private void ConsoleColorChanged(Color foreground, Color background) {
-            try {
-                Invoke(new DChangeColor(ChangeColor), foreground, background);
-            } catch {
-                Application.Exit();
-            }
-        }
-
-        private void ChangeColor(Color foreground, Color background) {
-            rtbConsole.SelectionStart = rtbConsole.TextLength;
-            rtbConsole.SelectionLength = 0;
-            rtbConsole.SelectionColor = foreground;
-            rtbConsole.SelectionBackColor = background;
-        }
-
-        private void Connected(string address) {
-            Invoke(new DSetServerAddress(SetServerAddress), address);
-        }
-
-        private void SetServerAddress(string address) {
-            lblServerAddress.Text = address;
-        }
-
-        private void DisplayFormEvent(Form form) {
-            Invoke(new DDisplayForm(DisplayForm), form);
-        }
-
-        private void DisplayForm(Form form) {
-            form.Show();
         }
 
         public void SetTaskbarBackground(TaskbarProgressBarState color) {
@@ -237,28 +210,8 @@ namespace DefectivelyServer.Forms
             Focus();
         }
 
-        public void RefreshAccounts() {
-            Invoke(new DRefreshAccounts(DisplayAccounts));
-        }
-
-        private void DisplayAccounts() {
-            pnlAccounts.Controls.Clear();
-            YCoordinate = 0;
-            var Database = Server.Database;
-            foreach (var Rank in Database.Ranks) {
-                var Header = GetHeaderPanel(Rank.Name, ColorTranslator.FromHtml(Rank.Color));
-                Header.Location = new Point(0, YCoordinate);
-                YCoordinate += 20;
-                pnlAccounts.Controls.Add(Header);
-                var Accounts = Database.Accounts.FindAll(a => a.RankId == Rank.Id);
-                foreach (var Account in Accounts) {
-                    var Item = GetItemPanel(Account.Name, ColorTranslator.FromHtml(Rank.Color), Account.Online);
-                    Item.Location = new Point(0, YCoordinate);
-                    YCoordinate += 51;
-                    pnlAccounts.Controls.Add(Item);
-                }
-                YCoordinate -= 1;
-            }
+        public void RefreshAccountList() {
+            Server_AccountListChanged(this, new EventArgs());
         }
 
         private Panel GetHeaderPanel(string header, Color background) {

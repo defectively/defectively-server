@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Windows.Forms;
@@ -14,6 +15,7 @@ using Defectively.Compatibility;
 using Defectively.Extension;
 using Defectively.Authentication;
 using Defectively.UI;
+using DefectivelyServer.EventArguments;
 using DefectivelyServer.Forms;
 using DefectivelyServer.Management;
 using DefectivelyServer.Storage.Database;
@@ -23,21 +25,43 @@ namespace DefectivelyServer.Internal
 {
     public class Server : IServer
     {
-        public delegate void DConsoleMessageReceivedHandler(string content);
+        public delegate void ConsoleMessageReceivedEventHandler(object sender, ConsoleMessageEventArgs e);
 
-        public delegate void DConsoleColorChangedHandler(Color foreground, Color background);
+        public delegate void ConsoleColorChangedEventHandler(object sender, ConsoleColorEventArgs e);
 
-        public delegate void DConnectedHandler(string address);
+        public delegate void StartedEventHandler(object sender, StartEventArgs e);
 
-        public delegate void DDisplayFormHandler(Form form);
+        public delegate void FormCreatedEventHandler(object sender, FormCreatedEventArgs e);
 
-        public delegate void DRefreshAccounts();
+        public delegate void AccountListChangedEventHandler(object sender, EventArgs e);
 
-        public event DConsoleMessageReceivedHandler ConsoleMessageReceived;
-        public event DConsoleColorChangedHandler ConsoleColorChanged;
-        public event DConnectedHandler Connected;
-        public event DDisplayFormHandler DisplayFormEvent;
-        public event DRefreshAccounts RefreshAccounts;
+        public event ConsoleMessageReceivedEventHandler ConsoleMessageReceived;
+        public event ConsoleColorChangedEventHandler ConsoleColorChanged;
+        public event StartedEventHandler Started;
+        public event FormCreatedEventHandler FormCreated;
+        public event AccountListChangedEventHandler AccountListChanged;
+
+        protected virtual void OnConsoleMessageReceived(ConsoleMessageEventArgs e) {
+            ConsoleMessageReceived?.Invoke(this, e);
+        }
+
+        protected virtual void OnConsoleColorChanged(ConsoleColorEventArgs e) {
+            ConsoleColorChanged?.Invoke(this, e);
+        }
+
+        protected virtual void OnStarted(StartEventArgs e) {
+            Started?.Invoke(this, e);
+        }
+
+        protected virtual void OnFromCreated(FormCreatedEventArgs e) {
+            FormCreated?.Invoke(this, e);
+        }
+
+        protected virtual void OnAccountListChanged(EventArgs e) {
+            AccountListChanged?.Invoke(this, e);
+        }
+
+        // /////////////////////////////////////////////////////////////////////////////
 
         public static Values Database = Helper.GetDatabase();
         public static Storage.Configuration.Values Config = Storage.Configuration.Helper.GetConfig();
@@ -56,17 +80,17 @@ namespace DefectivelyServer.Internal
 
         private TcpListener FServer;
         private TcpClient FClient;
-        private readonly IPEndPoint FIPEndPnt = new IPEndPoint(IPAddress.Any, int.Parse(Config.ServerPort));
+        private readonly IPEndPoint FIPEndPoint = new IPEndPoint(IPAddress.Any, int.Parse(Config.ServerPort));
 
         private Thread WaitingThread;
         private bool ExitThreadOnPurpose;
 
-        public NotifyIcon Notify { get; set; }
-        private Delegate NotifyCallback;
+        public NotifyIcon NotificationProvider { get; set; }
+        private Delegate NotificationCallback;
 
         private bool CancelMessageHandling;
-        private Queue<MessagePacket> MessageQueue = new Queue<MessagePacket>();
-        private Dictionary<string, Command> Commands = new Dictionary<string, Command>();
+        private Queue<MessagePacket> MessagePacketQueue = new Queue<MessagePacket>();
+        private Dictionary<string, Command> ServerCommands = new Dictionary<string, Command>();
 
         public bool Lockdown { get; set; }
         private bool Running;
@@ -81,7 +105,7 @@ namespace DefectivelyServer.Internal
         public static ConsoleStyle Error2 { get; } = new ConsoleStyle(Color.White, ColorTranslator.FromHtml("#FC3539"), ConsoleColor.White, ConsoleColor.Red);
 
         public bool Start() {
-            Notify.BalloonTipClicked += OnNotificationClicked;
+            NotificationProvider.BalloonTipClicked += OnNotificationClicked;
 
             Eskaemo.Trace("Eskaemo started tracing.", "ESKM");
             ExtensionManager.Extensions.Clear();
@@ -97,17 +121,12 @@ namespace DefectivelyServer.Internal
             }
 
             foreach (var Extension in ExtensionManager.Extensions) {
-                var ExtensionVersion = Extension.Version;
-                var CoreVersion = new Defectively.Compatibility.Version();
-                if (!CoreVersion.InRange(ExtensionVersion)) {
-                    var RangeStart = ExtensionVersion.SupportedVersion;
+                var ExtensionVersion = Extension.SupportedCoreVersion;
+                var CoreVersion = VersionHelper.GetVersionFromCore;
 
-                    if (ExtensionVersion.SupportedVersion == VersioningProfiler.Lowest.ToMediumString()) {
-                        RangeStart = "Lowest";
-                    }
-
-                    PrintToConsole($"[{Extension.Name}] Extension skipped due to a Version Conflict.\nRequired CoreVersion: {RangeStart}\nCurrent CoreVersion: {CoreVersion.ToMediumString()}\n", Error);
-                    Eskaemo.Trace($"Skipped \"{Extension.Name}\" due to a version conflict. Required CoreVersion: {RangeStart}. Current CoreVersion: {CoreVersion.ToMediumString()}.", "EXTS");
+                if (!CoreVersion.IsSupportedBy(ExtensionVersion)) {
+                    PrintToConsole($"[{Extension.Name}] Extension skipped due to a Version Conflict.\nRequired CoreVersion: {VersionHelper.GetFullStringFromVersion(ExtensionVersion)}\nCurrent CoreVersion: {VersionHelper.GetFullStringFromVersion(CoreVersion)}\n", Error);
+                    Eskaemo.Trace($"Skipped \"{Extension.Name}\" due to a version conflict. Required CoreVersion: {VersionHelper.GetFullStringFromVersion(ExtensionVersion)}. Current CoreVersion: {VersionHelper.GetFullStringFromVersion(CoreVersion)}.", "EXTS");
                     Extension.Disabled = true;
                     continue;
                 }
@@ -117,8 +136,8 @@ namespace DefectivelyServer.Internal
                 try {
                     Extension.OnEnable();
                     Extension.ServerListeners.ToList().ForEach(ListenerManager.RegisterListener);
-                    PrintToConsole($"[{Extension.Name}] Extension enabled. Version: {Extension.Version.ToShortString()}\n", Success);
-                    Eskaemo.Trace($"Extension \"{Extension.Name}\" (Version {Extension.Version.ToShortString()}) enabled.", "EXTS");
+                    PrintToConsole($"[{Extension.Name}] Extension enabled. Version: {VersionHelper.GetFullStringFromVersion(Extension.Version)}\n", Success);
+                    Eskaemo.Trace($"Extension \"{Extension.Name}\" (Version {VersionHelper.GetFullStringFromVersion(Extension.Version)}) enabled.", "EXTS");
 
                 } catch {
                     PrintToConsole($"[{Extension.Name}] Enabling failed.\n", Error);
@@ -168,7 +187,7 @@ namespace DefectivelyServer.Internal
             Defectively.JoinRestrictionMode = Enumerations.ChannelJoinMode.Default;
 
             try {
-                FServer = new TcpListener(FIPEndPnt);
+                FServer = new TcpListener(FIPEndPoint);
                 FServer.Start();
                 WaitingThread = new Thread(Wait);
                 WaitingThread.Start();
@@ -185,15 +204,15 @@ namespace DefectivelyServer.Internal
             var CLockdown = new Command("lockdown", "ml.festival.defectively");
             var CDebug = new Command("debug", "ml.festival.defectively");
             CDebug.AddParameter<string>("value", 0, ParameterType.Required);
-            Commands.Add("clear", CClear);
-            Commands.Add("lockdown", CLockdown);
-            Commands.Add("debug", CDebug);
+            ServerCommands.Add("clear", CClear);
+            ServerCommands.Add("lockdown", CLockdown);
+            ServerCommands.Add("debug", CDebug);
 
 
             //PunishmentManager.DisposeExceededRecords();
 
 
-            Connected?.Invoke($"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}");
+            OnStarted(new StartEventArgs($"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}"));
             Eskaemo.Trace($"Defectively 2 Server started on {Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}.", "SRVR");
             ListenerManager.InvokeEvent(Event.ServerStarted, $"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}");
             Running = true;
@@ -322,46 +341,46 @@ namespace DefectivelyServer.Internal
                                 //var PunishmentId = PunishmentManager.CheckForRecords(Account.Id, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily);
 
                                 //if (PunishmentId != "-1") {
-                                    //var Punishment = PunishmentManager.GetRecord(PunishmentId);
-                                    //Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Banned.ToString(), JsonConvert.SerializeObject(Punishment)));
+                                //var Punishment = PunishmentManager.GetRecord(PunishmentId);
+                                //Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Banned.ToString(), JsonConvert.SerializeObject(Punishment)));
                                 //} else {
-                                    Connection.Owner = Account;
-                                    Connection.Channel = Defectively;
-                                    Connections.Add(Connection);
-                                    var ListeningThread = new Thread(Listen);
-                                    ListeningThread.Start(Connection);
-                                    Connection.SessionId = Helpers.GenerateRandomId(16);
-                                    Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
-                                    var LuvaValues = new List<string>();
-                                    LuvaValues.AddRange(Connection.Owner.LuvaValues);
-                                    LuvaValues.AddRange(Database.Ranks.Find(r => r.Id == Connection.Owner.RankId).LuvaValues);
-                                    Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetLuvaValues, JsonConvert.SerializeObject(LuvaValues)));
-                                    Defectively.MemberIds.Add(Account.Id);
-                                    ChannelManager.SendChannelList();
-                                    var ExtensionPaths = new List<string>();
-                                    ExtensionManager.Extensions.FindAll(e => e.ClientInstance).ForEach(e => ExtensionPaths.Add(e.Path));
-                                    ExtensionPaths.ForEach(e => Connection.SetStreamContent(string.Join("|", Enumerations.Action.ExtensionTransport, JsonConvert.SerializeObject(File.ReadAllBytes(e)))));
+                                Connection.Owner = Account;
+                                Connection.Channel = Defectively;
+                                Connections.Add(Connection);
+                                var ListeningThread = new Thread(Listen);
+                                ListeningThread.Start(Connection);
+                                Connection.SessionId = Helpers.GenerateRandomId(16);
+                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
+                                var LuvaValues = new List<string>();
+                                LuvaValues.AddRange(Connection.Owner.LuvaValues);
+                                LuvaValues.AddRange(Database.Ranks.Find(r => r.Id == Connection.Owner.RankId).LuvaValues);
+                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetLuvaValues, JsonConvert.SerializeObject(LuvaValues)));
+                                Defectively.MemberIds.Add(Account.Id);
+                                ChannelManager.SendChannelList();
+                                var ExtensionPaths = new List<string>();
+                                ExtensionManager.Extensions.FindAll(e => e.ClientInstance).ForEach(e => ExtensionPaths.Add(e.Path));
+                                ExtensionPaths.ForEach(e => Connection.SetStreamContent(string.Join("|", Enumerations.Action.ExtensionTransport, JsonConvert.SerializeObject(File.ReadAllBytes(e)))));
 
-                                    if (!CancelMessageHandling) {
-                                        var Message = new MessagePacket {
-                                            Time = DateTime.Now.ToShortTimeString(),
-                                            Type = Enumerations.MessageType.Center,
-                                            Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) hat den Chat betreten."
-                                        };
+                                if (!CancelMessageHandling) {
+                                    var Message = new MessagePacket {
+                                        Time = DateTime.Now.ToShortTimeString(),
+                                        Type = Enumerations.MessageType.Center,
+                                        Content = $"{Connection.Owner.Name} (@{Connection.Owner.Id}) hat den Chat betreten."
+                                    };
 
-                                        SendMessagePacketToAll(Message);
-                                        Connection.Owner.Online = true;
-                                        Database.Accounts.Find(a => a.Id == Connection.Owner.Id).Online = true;
-                                    }
-                                    CancelMessageHandling = false;
+                                    SendMessagePacketToAll(Message);
+                                    Connection.Owner.Online = true;
+                                    Database.Accounts.Find(a => a.Id == Connection.Owner.Id).Online = true;
+                                }
+                                CancelMessageHandling = false;
 
-                                    SendPacketTo(Connection.Owner.Id, string.Join("|", Enumerations.Action.SetRankList, JsonConvert.SerializeObject(Database.Ranks)));
-                                    SendPacketToAll(string.Join("|", Enumerations.Action.SetAccountList, JsonConvert.SerializeObject(GetAccountsWithoutPassword())));
-                                    PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
-                                    Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
-                                    Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
-                                    RefreshAccounts?.Invoke();
-                                    ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
+                                SendPacketTo(Connection.Owner.Id, string.Join("|", Enumerations.Action.SetRankList, JsonConvert.SerializeObject(Database.Ranks)));
+                                SendPacketToAll(string.Join("|", Enumerations.Action.SetAccountList, JsonConvert.SerializeObject(GetAccountsWithoutPassword())));
+                                PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
+                                Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
+                                Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
+                                OnAccountListChanged(new EventArgs());
+                                ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
                                 //}
 
                             } else {
@@ -369,7 +388,7 @@ namespace DefectivelyServer.Internal
                                 Eskaemo.TraceIndented($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} refused.");
                                 Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "authentificationFailed"));
                             }
-                            
+
                         } else if (AccountIdData[0].StartsWith("srvcs/")) {
 
                             var AccountData = JsonConvert.DeserializeObject<SrvcsApiResult>(SrvcsApi.Call("profile", AccountIdData[0].Split('/')[1], AuthData[1]));
@@ -417,7 +436,7 @@ namespace DefectivelyServer.Internal
                                 PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
                                 Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
                                 Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
-                                RefreshAccounts?.Invoke();
+                                OnAccountListChanged(new EventArgs());
                                 ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
                             }
 
@@ -444,7 +463,7 @@ namespace DefectivelyServer.Internal
                     }
 
                     var Packet = Connection.GetStreamContent().Split('|');
-                    
+
                     // TODO
 
                     //var PunishmentId = PunishmentManager.CheckForRecords(Connection.Owner.Id, Enumerations.PunishmentType.Mute);
@@ -479,8 +498,8 @@ namespace DefectivelyServer.Internal
                             MessagePacket Result;
 
                             if (Packet[1].StartsWith("/")) {
-                                if (Commands["debug"].Validate(Packet[1])) {
-                                    var Value = Commands["debug"].Parse<string>(Packet[1], "value");
+                                if (ServerCommands["debug"].Validate(Packet[1])) {
+                                    var Value = ServerCommands["debug"].Parse<string>(Packet[1], "value");
                                     if (Value == "version") {
                                         Result = new MessagePacket {
                                             Time = DateTime.Now.ToShortTimeString(),
@@ -488,7 +507,7 @@ namespace DefectivelyServer.Internal
                                             RankColor = "#125596",
                                             SenderId = "server",
                                             SenderPrefix = "[Server] Defectively",
-                                            Content = $"Defectively Server<br /><small>Version {new Version().ToLongString()}</small><br /><br />Defectively<br /><small>Version {new Defectively.Compatibility.Version().ToLongString()}</small>"
+                                            Content = $"Defectively Server<br /><small>Version {VersionHelper.GetFullStringFromAssembly(Assembly.GetExecutingAssembly())}</small><br /><br />Defectively<br /><small>Version {VersionHelper.GetFullStringFromCore()}</small>"
                                         };
 
                                         SendMessagePacketTo(Connection.Owner.Id, Result);
@@ -504,7 +523,7 @@ namespace DefectivelyServer.Internal
 
                                         SendMessagePacketTo(Connection.Owner.Id, Result);
                                     }
-                                } else if (Commands["lockdown"].Validate(Packet[1])) {
+                                } else if (ServerCommands["lockdown"].Validate(Packet[1])) {
                                     Lockdown = !Lockdown;
                                     Result = new MessagePacket {
                                         Time = DateTime.Now.ToShortTimeString(),
@@ -516,7 +535,7 @@ namespace DefectivelyServer.Internal
                                     };
 
                                     SendMessagePacketTo(Connection.Owner.Id, Result);
-                                } else if (Commands["clear"].Validate(Packet[1])) {
+                                } else if (ServerCommands["clear"].Validate(Packet[1])) {
                                     SendPacketToChannel(Connection.Channel.Id, string.Join("|", Enumerations.Action.ClearConversation, ""));
                                 } else {
                                     Result = new MessagePacket {
@@ -590,6 +609,8 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.TryChannelJoin:
                             var ChannelToJoin = Channels.Find(c => c.Id == Packet[1]);
 
+                            // TODO
+
                             if (ChannelToJoin != null) {
 
                                 if (ChannelToJoin == Connection.Channel) {
@@ -632,8 +653,8 @@ namespace DefectivelyServer.Internal
                             break;
                         }
 
-                        while (MessageQueue.Count > 0) {
-                            SendMessagePacketToAll(MessageQueue.Dequeue());
+                        while (MessagePacketQueue.Count > 0) {
+                            SendMessagePacketToAll(MessagePacketQueue.Dequeue());
                         }
 
                     } catch {
@@ -672,7 +693,7 @@ namespace DefectivelyServer.Internal
                     PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) disconnected.\n", Error);
                     Eskaemo.Trace($"Connection to \"{Connection.Owner.Id}\" lost.", "NTWK");
                     Eskaemo.TraceIndented("Connection disposed.");
-                    RefreshAccounts?.Invoke();
+                    OnAccountListChanged(new EventArgs());
                     Connection.Dispose();
                     return;
                 }
@@ -687,16 +708,10 @@ namespace DefectivelyServer.Internal
             SendPacketTo(connection.Owner.Id, string.Join("|", Enumerations.Action.ShowLuvaNotice, luvaValue, JsonConvert.SerializeObject(Severity)));
         }
 
-        //public void PrintToConsole(string content, Color color, bool newLine = true) {
-        //    ConsoleColorChanged?.Invoke(color);
-        //    ConsoleMessageReceived?.Invoke(content, newLine);
-        //    ConsoleColorChanged?.Invoke(SystemColors.WindowFrame);
-        //}
-
         public void PrintToConsole(string content, ConsoleStyle style) {
-            ConsoleColorChanged?.Invoke(style.Foreground, style.Background);
-            ConsoleMessageReceived?.Invoke(content);
-            ConsoleColorChanged?.Invoke(SystemColors.WindowFrame, Color.White);
+            OnConsoleColorChanged(new ConsoleColorEventArgs(style.Foreground, style.Background));
+            OnConsoleMessageReceived(new ConsoleMessageEventArgs(content));
+            OnConsoleColorChanged(new ConsoleColorEventArgs(SystemColors.WindowFrame, Color.White));
 
             var Hyper = Connections.Find(c => c.Owner == HyperAccount);
             Hyper?.SetStreamContent(string.Join("|", Enumerations.Action.HyperCommunicate, content, JsonConvert.SerializeObject(style)));
@@ -791,7 +806,7 @@ namespace DefectivelyServer.Internal
         }
 
         public void DisplayForm(Form form) {
-            DisplayFormEvent?.Invoke(form);
+            OnFromCreated(new FormCreatedEventArgs(form));
         }
 
         public List<string> GetAllConnectedIds() {
@@ -801,7 +816,7 @@ namespace DefectivelyServer.Internal
         }
 
         public void Enqueue(MessagePacket message) {
-            MessageQueue.Enqueue(message);
+            MessagePacketQueue.Enqueue(message);
         }
 
         public bool AccountHasLuvaValue(string accountId, string luvaValue) {
@@ -838,7 +853,7 @@ namespace DefectivelyServer.Internal
             Connection.Owner.Online = online;
             Database.Accounts.Find(a => a.Id == Connection.Owner.Id).Online = online;
             SendPacketToAll(string.Join("|", Enumerations.Action.SetAccountList, JsonConvert.SerializeObject(GetAccountsWithoutPassword())));
-            RefreshAccounts?.Invoke();
+            OnAccountListChanged(new EventArgs());
         }
 
         public void CreateChannel(string id, string name, bool hidden, IExtension extension) {
@@ -861,15 +876,15 @@ namespace DefectivelyServer.Internal
         }
 
         public void ShowNotification(Notification notification) {
-            NotifyCallback = notification.CallbackDelegate;
-            Notify.ShowBalloonTip(notification.Timeout, notification.Title, notification.Content, ToolTipIcon.None);
+            NotificationCallback = notification.CallbackDelegate;
+            NotificationProvider.ShowBalloonTip(notification.Timeout, notification.Title, notification.Content, ToolTipIcon.None);
             try {
-                Notify.Icon = Application.OpenForms.OfType<MainWindow>().ToList()[0].Icon;
+                NotificationProvider.Icon = Application.OpenForms.OfType<MainWindow>().ToList()[0].Icon;
             } catch { }
         }
 
         private void OnNotificationClicked(object sender, EventArgs e) {
-            NotifyCallback.DynamicInvoke();
+            NotificationCallback.DynamicInvoke();
         }
 
         private List<Account> GetAccountsWithoutPassword() {
@@ -882,15 +897,15 @@ namespace DefectivelyServer.Internal
             var Meta = new ServerMetaData {
                 AcceptsGuests = Config.MetaAcceptsGuests,
                 AcceptsRegistration = Config.MetaAcceptsRegistration,
-                GuestsCanChooseName = Config.MetaGuestsCanChooseName,
                 Language = Config.ServerLanguage,
                 Name = Config.MetaServerName,
                 OperatorWebsiteUrl = Config.MetaWebsiteUrl,
                 OwnerId = Config.MetaOwnerId,
                 RequiresInvitation = Config.MetaRequiresInvitation,
                 IsLockdown = Lockdown,
-                ServerVersion = new Version(),
-                ServerCoreVersion = new Defectively.Compatibility.Version().ToMediumString()
+                Version = VersionHelper.GetVersionFromAssembly(Assembly.GetExecutingAssembly()).ToString(4),
+                SVersion = VersionHelper.GetLSVersionFromAssembly<LSClientVersionAttribute>(Assembly.GetExecutingAssembly()).ToString(4),
+                CVersion = VersionHelper.GetFullStringFromCore()
             };
 
             return Meta;

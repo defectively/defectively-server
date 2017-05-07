@@ -55,7 +55,7 @@ namespace DefectivelyServer.Management
             Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetChannel, JsonConvert.SerializeObject(channel)));
             Server.Channels.RemoveAll(c => c.MemberIds.Count == 0 && !c.Persistent);
             SendChannelList();
-            Application.OpenForms.OfType<MainWindow>().ToList()[0].RefreshAccounts();
+            Application.OpenForms.OfType<MainWindow>().ToList()[0].RefreshAccountList();
         }
 
         public static void MoveAccountTo(string accountId, string channelId) {

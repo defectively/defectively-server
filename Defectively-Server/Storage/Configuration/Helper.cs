@@ -32,7 +32,6 @@ namespace DefectivelyServer.Storage.Configuration
                 MetaWebsiteUrl = "https://festival.ml/",
                 MetaRequiresAuthentification = true,
                 MetaAcceptsGuests = false,
-                MetaGuestsCanChooseName = false,
                 MetaAcceptsRegistration = false,
                 MetaRequiresInvitation = false,
                 MetaAccountsInstantlyActivated = false

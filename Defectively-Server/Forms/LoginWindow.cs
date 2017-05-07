@@ -6,6 +6,7 @@ namespace DefectivelyServer.Forms
     public partial class LoginWindow : Form
     {
         private Storage.Localization.Values Lcl;
+        private Storage.Database.Values Database;
 
         public bool IsTimeoutLogin;
 
@@ -18,7 +19,6 @@ namespace DefectivelyServer.Forms
         }
 
         private void BtnLogin_Click(object sender, System.EventArgs e) {
-            var Database = Storage.Database.Helper.GetDatabase();
             if (Storage.Database.Helper.AccountExists(Database, tbxAccountId.Text)) {
                 var Account = Storage.Database.Helper.GetAccount(Database, tbxAccountId.Text);
                 if (Account.Password == Cryptography.ComputeHash(tbxPassword.Text)) {
@@ -29,7 +29,7 @@ namespace DefectivelyServer.Forms
                             IsTimeoutLogin = false;
                             Close();
                         } else {
-                            MainWindow MWindow = new MainWindow();
+                            var MWindow = new MainWindow();
                             MWindow.Show();
                             Hide();
                         }
@@ -56,8 +56,16 @@ namespace DefectivelyServer.Forms
 
         private void LoginWindow_Shown(object sender, System.EventArgs e) {
             if (!Storage.Configuration.Helper.GetConfig().ConsoleRequiresAuthentification) {
-                MainWindow MWindow = new MainWindow();
-                MWindow.Show();
+                var Window = new MainWindow();
+                Window.Show();
+                Hide();
+            }
+
+            Database = Storage.Database.Helper.GetDatabase();
+
+            if (Database?.Accounts == null) {
+                var Window = new GettingStartedWindow();
+                Window.Show();
                 Hide();
             }
         }

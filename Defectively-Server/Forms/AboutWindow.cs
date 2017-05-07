@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 using System.Windows.Forms;
+using Defectively.Compatibility;
 
 namespace DefectivelyServer.Forms
 {
@@ -15,8 +9,8 @@ namespace DefectivelyServer.Forms
         public AboutWindow() {
             InitializeComponent();
 
-            lblServerVersion.Text = $"Version {new DefectivelyServer.Version().ToMediumString()}";
-            lblCoreVersion.Text = $"Version {new Defectively.Compatibility.Version().ToMediumString()}";
+            lblServerVersion.Text = $"Version {VersionHelper.GetFullStringFromAssembly(Assembly.GetExecutingAssembly())}\n({Assembly.GetExecutingAssembly().GetName().Version.ToString(4)})";
+            lblCoreVersion.Text = $"Version {VersionHelper.GetFullStringFromCore()}";
         }
     }
 }

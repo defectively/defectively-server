@@ -14,7 +14,6 @@
         public string MetaWebsiteUrl { get; set; }
         public bool MetaRequiresAuthentification { get; set; }
         public bool MetaAcceptsGuests { get; set; }
-        public bool MetaGuestsCanChooseName { get; set; }
         public bool MetaAcceptsRegistration { get; set; }
         public bool MetaRequiresInvitation { get; set; }
         public bool MetaAccountsInstantlyActivated { get; set; }

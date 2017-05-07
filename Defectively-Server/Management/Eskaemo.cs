@@ -52,8 +52,8 @@ namespace DefectivelyServer.Management
                 var Trace = File.ReadAllLines(Path.Combine(TracesPath, TraceFile)).ToList();
 
                 Trace.Add("=========== Session Begin ===========");
-                Trace.Add($"Version: F2S {new Version().ToMediumString()}");
-                Trace.Add($"CoreVersion: F2C {new Defectively.Compatibility.Version().ToMediumString()}");
+                // Trace.Add($"Version: F2S {new Version().ToMediumString()}");
+                // Trace.Add($"CoreVersion: F2C {new Defectively.Compatibility.Version().ToMediumString()}");
                 Trace.Add($"Start: {SessionStart.ToLongTimeString()}");
                 Trace.Add("=====================================");
                 Trace.Add("");

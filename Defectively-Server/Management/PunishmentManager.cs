@@ -1,9 +1,4 @@
-﻿using System;
-using Defectively;
-using DefectivelyServer.Internal;
-using Newtonsoft.Json;
-
-namespace DefectivelyServer.Management
+﻿namespace DefectivelyServer.Management
 {
     //public class PunishmentManager
     //{

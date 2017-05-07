@@ -67,9 +67,10 @@
             // 
             // btnLogin
             // 
+            this.btnLogin.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.btnLogin.Location = new System.Drawing.Point(165, 310);
             this.btnLogin.Name = "btnLogin";
-            this.btnLogin.Size = new System.Drawing.Size(75, 23);
+            this.btnLogin.Size = new System.Drawing.Size(75, 25);
             this.btnLogin.TabIndex = 9;
             this.btnLogin.Text = "Login";
             this.btnLogin.UseVisualStyleBackColor = true;
@@ -128,8 +129,8 @@
             this.TableLayoutPanel1.ColumnCount = 2;
             this.TableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.TableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.TableLayoutPanel1.Controls.Add(this.PictureBox1, 1, 0);
             this.TableLayoutPanel1.Controls.Add(this.Panel1, 0, 0);
+            this.TableLayoutPanel1.Controls.Add(this.PictureBox1, 1, 0);
             this.TableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.TableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
