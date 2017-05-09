@@ -63,7 +63,7 @@
             this.tbxInput.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.tbxInput.Location = new System.Drawing.Point(7, 8);
             this.tbxInput.Name = "tbxInput";
-            this.tbxInput.Size = new System.Drawing.Size(398, 25);
+            this.tbxInput.Size = new System.Drawing.Size(414, 25);
             this.tbxInput.TabIndex = 1;
             // 
             // btnStartServer
@@ -84,7 +84,7 @@
             this.lblStatus.Location = new System.Drawing.Point(0, 0);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Padding = new System.Windows.Forms.Padding(5, 0, 0, 0);
-            this.lblStatus.Size = new System.Drawing.Size(111, 29);
+            this.lblStatus.Size = new System.Drawing.Size(150, 29);
             this.lblStatus.TabIndex = 0;
             this.lblStatus.Text = "Stopped";
             this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -94,20 +94,20 @@
             this.Panel5.Controls.Add(this.tbxInput);
             this.Panel5.Controls.Add(this.btnSend);
             this.Panel5.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.Panel5.Location = new System.Drawing.Point(0, 447);
+            this.Panel5.Location = new System.Drawing.Point(0, 446);
             this.Panel5.Name = "Panel5";
-            this.Panel5.Size = new System.Drawing.Size(518, 40);
+            this.Panel5.Size = new System.Drawing.Size(534, 40);
             this.Panel5.TabIndex = 3;
             // 
             // btnSend
             // 
             this.btnSend.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSend.Location = new System.Drawing.Point(411, 7);
+            this.btnSend.Location = new System.Drawing.Point(427, 7);
             this.btnSend.Name = "btnSend";
             this.btnSend.Size = new System.Drawing.Size(100, 27);
             this.btnSend.TabIndex = 2;
-            this.btnSend.Text = "Senden";
+            this.btnSend.Text = "Send";
             this.btnSend.UseVisualStyleBackColor = true;
             // 
             // Panel1
@@ -116,7 +116,7 @@
             this.Panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.Panel1.Location = new System.Drawing.Point(0, 0);
             this.Panel1.Name = "Panel1";
-            this.Panel1.Size = new System.Drawing.Size(868, 46);
+            this.Panel1.Size = new System.Drawing.Size(884, 46);
             this.Panel1.TabIndex = 8;
             // 
             // rtbConsole
@@ -129,7 +129,7 @@
             this.rtbConsole.Location = new System.Drawing.Point(7, 0);
             this.rtbConsole.Name = "rtbConsole";
             this.rtbConsole.ReadOnly = true;
-            this.rtbConsole.Size = new System.Drawing.Size(504, 447);
+            this.rtbConsole.Size = new System.Drawing.Size(520, 446);
             this.rtbConsole.TabIndex = 0;
             this.rtbConsole.Text = "";
             // 
@@ -140,9 +140,9 @@
             this.pnlStatus.Controls.Add(this.lblServerAddress);
             this.pnlStatus.Controls.Add(this.lblStatus);
             this.pnlStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlStatus.Location = new System.Drawing.Point(0, 533);
+            this.pnlStatus.Location = new System.Drawing.Point(0, 532);
             this.pnlStatus.Name = "pnlStatus";
-            this.pnlStatus.Size = new System.Drawing.Size(868, 29);
+            this.pnlStatus.Size = new System.Drawing.Size(884, 29);
             this.pnlStatus.TabIndex = 11;
             // 
             // lblAssembly
@@ -151,10 +151,10 @@
             this.lblAssembly.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblAssembly.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblAssembly.ForeColor = System.Drawing.Color.White;
-            this.lblAssembly.Location = new System.Drawing.Point(111, 0);
+            this.lblAssembly.Location = new System.Drawing.Point(150, 0);
             this.lblAssembly.Name = "lblAssembly";
             this.lblAssembly.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
-            this.lblAssembly.Size = new System.Drawing.Size(607, 29);
+            this.lblAssembly.Size = new System.Drawing.Size(584, 29);
             this.lblAssembly.TabIndex = 2;
             this.lblAssembly.Text = "Version";
             this.lblAssembly.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -163,7 +163,7 @@
             // 
             this.lblServerAddress.Dock = System.Windows.Forms.DockStyle.Right;
             this.lblServerAddress.ForeColor = System.Drawing.Color.White;
-            this.lblServerAddress.Location = new System.Drawing.Point(718, 0);
+            this.lblServerAddress.Location = new System.Drawing.Point(734, 0);
             this.lblServerAddress.Name = "lblServerAddress";
             this.lblServerAddress.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
             this.lblServerAddress.Size = new System.Drawing.Size(150, 29);
@@ -177,7 +177,7 @@
             this.Panel6.Location = new System.Drawing.Point(0, 0);
             this.Panel6.Name = "Panel6";
             this.Panel6.Padding = new System.Windows.Forms.Padding(7, 0, 7, 0);
-            this.Panel6.Size = new System.Drawing.Size(518, 447);
+            this.Panel6.Size = new System.Drawing.Size(534, 446);
             this.Panel6.TabIndex = 4;
             // 
             // pnlAccounts
@@ -186,7 +186,7 @@
             this.pnlAccounts.Dock = System.Windows.Forms.DockStyle.Left;
             this.pnlAccounts.Location = new System.Drawing.Point(0, 46);
             this.pnlAccounts.Name = "pnlAccounts";
-            this.pnlAccounts.Size = new System.Drawing.Size(350, 487);
+            this.pnlAccounts.Size = new System.Drawing.Size(350, 486);
             this.pnlAccounts.TabIndex = 9;
             // 
             // tmrLoginTimeout
@@ -200,7 +200,7 @@
             this.Panel3.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Panel3.Location = new System.Drawing.Point(350, 46);
             this.Panel3.Name = "Panel3";
-            this.Panel3.Size = new System.Drawing.Size(518, 487);
+            this.Panel3.Size = new System.Drawing.Size(534, 486);
             this.Panel3.TabIndex = 10;
             // 
             // ntiNotification
@@ -219,29 +219,29 @@
             this.toolStripSeparator1,
             this.demoToolStripMenuItem});
             this.cmsToolbar.Name = "cmsToolbar";
-            this.cmsToolbar.Size = new System.Drawing.Size(153, 98);
+            this.cmsToolbar.Size = new System.Drawing.Size(134, 76);
             // 
             // startServerToolStripMenuItem
             // 
             this.startServerToolStripMenuItem.Name = "startServerToolStripMenuItem";
-            this.startServerToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.startServerToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.startServerToolStripMenuItem.Text = "Start Server";
             // 
             // stopServerToolStripMenuItem
             // 
             this.stopServerToolStripMenuItem.Name = "stopServerToolStripMenuItem";
-            this.stopServerToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.stopServerToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.stopServerToolStripMenuItem.Text = "Stop Server";
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(149, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(130, 6);
             // 
             // demoToolStripMenuItem
             // 
             this.demoToolStripMenuItem.Name = "demoToolStripMenuItem";
-            this.demoToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.demoToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.demoToolStripMenuItem.Text = "Demo";
             // 
             // MainWindow
@@ -249,7 +249,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(868, 562);
+            this.ClientSize = new System.Drawing.Size(884, 561);
             this.Controls.Add(this.Panel3);
             this.Controls.Add(this.pnlAccounts);
             this.Controls.Add(this.Panel1);

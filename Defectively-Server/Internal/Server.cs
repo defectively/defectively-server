@@ -387,6 +387,12 @@ namespace DefectivelyServer.Internal
                                 Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
                                 OnAccountListChanged(new EventArgs());
                                 ListenerManager.InvokeEvent(Event.ClientConnected, Connection.Owner.Id);
+
+                                var AllCommands = new List<string>();
+                                AllCommands.AddRange(ServerCommands.Values.Select(c => c.ToString()));
+                                ExtensionManager.Extensions.ForEach(e => AllCommands.AddRange(e.Commands.Values.Select(c => c.ToString())));
+                                SendPacketTo(Connection.Owner.Id, string.Join("|", Enumerations.Action.SetCommandList, JsonConvert.SerializeObject(AllCommands)));
+
                                 //}
 
                             } else {
@@ -495,7 +501,7 @@ namespace DefectivelyServer.Internal
 
                         case Enumerations.Action.Plain:
 
-                            ListenerManager.InvokeEvent(Event.ClientMessageReceived, Connection.Owner.Id, Packet[1]);
+                            ListenerManager.InvokeEvent(Event.ClientMessageReceived, Connection.Owner.Id, Packet[1], Connection.Channel.Id);
 
                             if (CancelMessageHandling) {
                                 CancelMessageHandling = false;
@@ -592,7 +598,19 @@ namespace DefectivelyServer.Internal
                             var Editable = Connection.Owner.Id == AccountId;
                             var Rank = Database.Ranks.Find(r => r.Id == SelectedAccount.RankId).Name;
                             var Money = SelectedAccount.Deposit.ToString();
-                            var LastSeen = Online ? Connections.Find(c => c.Owner.Id == AccountId).Channel.Name : "Offline";
+
+                            var LastSeen = "";
+                            if (Online) {
+                                var Channel = Connections.Find(c => c.Owner.Id == AccountId).Channel;
+                                if (Channel.Hidden && !Connection.Owner.AccountHasLuvaValue("canSeeHiddenChannels")) {
+                                    LastSeen = "Hidden Channel";
+                                } else {
+                                    LastSeen = Channel.Name;
+                                }
+                            } else {
+                                LastSeen = "Offline";
+                            }
+
                             SendPacketTo(Connection.Owner.Id, string.Join("|", Enumerations.Action.SetAccountData, JsonConvert.SerializeObject(Avatar), JsonConvert.SerializeObject(Header), Online.ToString(), AccountName, Editable.ToString(), Rank, Money, LastSeen));
                             break;
                         case Enumerations.Action.SendLuvaNotice:
@@ -648,7 +666,7 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.CloseChannel:
                             var ChannelToClose = Channels.Find(c => c.Id == Packet[1]);
 
-                            if (ChannelToClose != null && (Connection.Owner.AccountHasLuvaValue("defectively.canCloseChannels") || ChannelToClose.OwnerId == Connection.Owner.Id) && ChannelToClose.Id != "defectively") {
+                            if (ChannelToClose != null && (Connection.Owner.AccountHasLuvaValue("defectively.canCloseChannels") || ChannelToClose.OwnerId == Connection.Owner.Id) && ChannelToClose.Id != "defectively" && !ChannelToClose.Persistent) {
                                 ChannelManager.CloseChannel(ChannelToClose);
                             } else {
                                 SendLuvaNotice("defectively.canCloseChannels", Connection);
@@ -863,16 +881,22 @@ namespace DefectivelyServer.Internal
             OnAccountListChanged(new EventArgs());
         }
 
-        public void CreateChannel(string id, string name, bool hidden, IExtension extension) {
+        public void CreateChannel(string id, string name, bool hidden, Enumerations.ChannelJoinMode restriction, IExtension extension) {
             var Channel = new Channel {
                 Capacity = -1,
                 Id = id,
-                JoinRestrictionMode = hidden ? Enumerations.ChannelJoinMode.Protected : Enumerations.ChannelJoinMode.Default,
+                JoinRestrictionMode = restriction,
                 Name = name,
                 OwnerId = extension.Namespace,
                 Hidden = hidden
             };
             ChannelManager.AddChannel(Channel);
+            ChannelManager.SendChannelList();
+        }
+
+        public void CreateChannel(Channel channel, IExtension extension) {
+            channel.OwnerId = extension.Namespace;
+            ChannelManager.AddChannel(channel);
             ChannelManager.SendChannelList();
         }
 
@@ -886,6 +910,14 @@ namespace DefectivelyServer.Internal
                 ChannelManager.CloseChannel(Channels.Find(c => c.Id == id));
             }
             ChannelManager.SendChannelList();
+        }
+
+        public bool IsAccountInChannel(string accountId, string channelId) {
+            return Connections.Find(c => c.Owner.Id == accountId).Channel.Id == channelId;
+        }
+
+        public List<string> GetAllIdsInChannel(string channelId) {
+            return Channels.Find(c => c.Id == channelId).MemberIds;
         }
 
         public void ShowNotification(Notification notification) {

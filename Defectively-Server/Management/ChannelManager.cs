@@ -62,11 +62,11 @@ namespace DefectivelyServer.Management
                 Type = Enumerations.MessageType.Center
             });
 
-            ListenerManager.InvokeEvent(Event.ClientChannelChanged,  Connection.Owner.Id, channel.Id);
             Connection.Channel = channel;
             Connection.SetStreamContent(Enumerations.Action.ClearConversation.ToString());
             Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetChannel, JsonConvert.SerializeObject(channel)));
             Server.Channels.RemoveAll(c => c.MemberIds.Count == 0 && !c.Persistent);
+            ListenerManager.InvokeEvent(Event.ClientChannelChanged, Connection.Owner.Id, channel.Id);
             SendChannelList();
             Application.OpenForms.OfType<MainWindow>().ToList()[0].RefreshAccountList();
         }

@@ -33,7 +33,7 @@ namespace DefectivelyServer.Management
 
                     try {
                         var Assembly = System.Reflection.Assembly.GetAssembly(Type);
-                        using (var Stream = Assembly.GetManifestResourceStream($"{Assembly.GetName().Name}.extension.json")) {
+                        using (var Stream = Assembly.GetManifestResourceStream($"{Assembly.GetName().Name}.meta.json")) {
                             using (var Reader = new StreamReader(Stream)) {
                                 var Content = Reader.ReadToEnd();
                                 var ExtensionMeta = JsonConvert.DeserializeObject<JsonExtension>(Content);
@@ -41,7 +41,7 @@ namespace DefectivelyServer.Management
                             }
                         }
                     } catch {
-                        Debug.Print($"{Extension.Namespace} didn't provide a valid extension.json!");
+                        Debug.Print($"{Extension.Namespace} didn't provide a valid meta.json!");
                     }
 
                     // DEMO END

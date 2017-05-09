@@ -291,6 +291,13 @@ namespace DefectivelyServer.Forms
                 Label2.BackColor = Color.White;
                 Label2.Location = new Point(Label.Width + 21, 15);
                 Panel.Controls.Add(Label2);
+
+                if (Label2.Width > Status.Left - Label.Right - 21) {
+                    Label2.AutoSize = false;
+                    Label2.Height = 21;
+                    Label2.Width = Status.Left - Label.Right - 21;
+                    Label2.AutoEllipsis = true;
+                }
             } else {
                 Status.State = AccountState.Offline;
             }
