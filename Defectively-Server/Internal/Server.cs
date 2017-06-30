@@ -71,7 +71,6 @@ namespace DefectivelyServer.Internal
         public static List<Channel> Channels = new List<Channel>();
         private Channel Defectively = new Channel();
         private Account ServerAccount = new Account();
-        private Account HyperAccount = new Account();
 
         private RSACryptoServiceProvider PreServiceProvider = new RSACryptoServiceProvider(4096);
         private RSACryptoServiceProvider ServiceProvider = new RSACryptoServiceProvider(4096);
@@ -97,12 +96,12 @@ namespace DefectivelyServer.Internal
         private Account DatabaseAccount;
 
         public static ConsoleStyle Default { get; } = new ConsoleStyle();
-        public static ConsoleStyle Dark { get; } = new ConsoleStyle(Color.DarkSlateGray, SystemColors.Control, ConsoleColor.Green, ConsoleColor.Black);
-        public static ConsoleStyle Success { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#07D159"), SystemColors.Control, ConsoleColor.Green, ConsoleColor.Black);
-        public static ConsoleStyle Warning { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#FFD000"), SystemColors.Control, ConsoleColor.Black, ConsoleColor.Yellow);
-        public static ConsoleStyle Warning2 { get; } = new ConsoleStyle(Color.Black, ColorTranslator.FromHtml("#FFD000"), ConsoleColor.Black, ConsoleColor.Yellow);
-        public static ConsoleStyle Error { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#FC3539"), SystemColors.Control, ConsoleColor.White, ConsoleColor.Red);
-        public static ConsoleStyle Error2 { get; } = new ConsoleStyle(Color.White, ColorTranslator.FromHtml("#FC3539"), ConsoleColor.White, ConsoleColor.Red);
+        public static ConsoleStyle Dark { get; } = new ConsoleStyle(Color.DarkSlateGray, SystemColors.Control);
+        public static ConsoleStyle Success { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#07D159"), SystemColors.Control);
+        public static ConsoleStyle Warning { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#FFD000"), SystemColors.Control);
+        public static ConsoleStyle Warning2 { get; } = new ConsoleStyle(Color.Black, ColorTranslator.FromHtml("#FFD000"));
+        public static ConsoleStyle Error { get; } = new ConsoleStyle(ColorTranslator.FromHtml("#FC3539"), SystemColors.Control);
+        public static ConsoleStyle Error2 { get; } = new ConsoleStyle(Color.White, ColorTranslator.FromHtml("#FC3539"));
 
         public bool Start() {
             NotificationProvider.BalloonTipClicked += OnNotificationClicked;
@@ -115,8 +114,8 @@ namespace DefectivelyServer.Internal
                 try {
                     ExtensionManager.LoadExtension(File);
                 } catch {
-                    PrintToConsole($"[ExtensionSystem] Loading the Extension \"{File.Split('\\').Last()}\" failed.\n", Error);
-                    Eskaemo.Trace($"Loading the Extension \"{File.Split('\\').Last()}\" failed.", "EXTS");
+                    PrintToConsole($"[ExtensionSystem] Loading \"{File.Split('\\').Last()}\" failed.\n", Error);
+                    Eskaemo.Trace($"Loading \"{File.Split('\\').Last()}\" failed.", "EXTS");
                 }
             }
 
@@ -125,22 +124,22 @@ namespace DefectivelyServer.Internal
                 var CoreVersion = VersionHelper.GetVersionFromCore;
 
                 if (!CoreVersion.IsSupportedBy(ExtensionVersion)) {
-                    PrintToConsole($"[{Extension.Name}] Extension skipped due to a Version Conflict.\nRequired CoreVersion: {VersionHelper.GetFullStringFromVersion(ExtensionVersion)}\nCurrent CoreVersion: {VersionHelper.GetFullStringFromVersion(CoreVersion)}\n", Error);
+                    PrintToConsole($"[ExtensionSystem] \"{Extension.Name}\" skipped due to a version conflict.\nRequired Core: Version {VersionHelper.GetFullStringFromVersion(ExtensionVersion)}\nCurrent Core: Version {VersionHelper.GetFullStringFromVersion(CoreVersion)}\n", Error);
                     Eskaemo.Trace($"Skipped \"{Extension.Name}\" due to a version conflict. Required CoreVersion: {VersionHelper.GetFullStringFromVersion(ExtensionVersion)}. Current CoreVersion: {VersionHelper.GetFullStringFromVersion(CoreVersion)}.", "EXTS");
                     Extension.Disabled = true;
                     continue;
                 }
 
-                PrintToConsole($"[{Extension.Name}] Enabling...\n", Dark);
+                PrintToConsole($"[ExtensionSystem] Enabling \"{Extension.Name}\"...\n", Dark);
 
                 try {
                     Extension.OnEnable();
                     Extension.ServerListeners.ToList().ForEach(ListenerManager.RegisterListener);
-                    PrintToConsole($"[{Extension.Name}] Extension enabled. Version: {VersionHelper.GetFullStringFromVersion(Extension.Version)}\n", Success);
+                    PrintToConsole($"[ExtensionSystem] \"{Extension.Name}\" enabled. (V {VersionHelper.GetFullStringFromVersion(Extension.Version)})\n", Success);
                     Eskaemo.Trace($"Extension \"{Extension.Name}\" (Version {VersionHelper.GetFullStringFromVersion(Extension.Version)}) enabled.", "EXTS");
 
                 } catch {
-                    PrintToConsole($"[{Extension.Name}] Enabling failed.\n", Error);
+                    PrintToConsole($"[ExtensionSystem] Enabling \"{Extension.Name}\" failed.\n", Error);
                     Eskaemo.Trace($"Enabling the extension \"{Extension.Name}\" failed.", "EXTS");
                 }
             }
@@ -180,10 +179,6 @@ namespace DefectivelyServer.Internal
             }
 
             ServerAccount.Id = "Server";
-            HyperAccount.Name = "Defectively II Hyper Client";
-            HyperAccount.Id = "hyper";
-            HyperAccount.LuvaValues.Add("luva.wildcard");
-            HyperAccount.RankId = "Administrator";
             Defectively.Id = "defectively";
             Defectively.Name = "Defectively";
             Defectively.OwnerId = ServerAccount.Id;
@@ -197,8 +192,12 @@ namespace DefectivelyServer.Internal
                 WaitingThread = new Thread(Wait);
                 WaitingThread.Start();
             } catch {
+                MessageBox.Show("Port already occupied!");
                 return false;
             }
+
+            //Database.Channels.RemoveAll(c => c.Id.StartsWith("?"));
+            //Storage.Database.Helper.Save();
 
             Channels.RemoveAll(c => c.Persistent);
             Channels.Add(Defectively);
@@ -213,7 +212,7 @@ namespace DefectivelyServer.Internal
             ServerCommands.Add("debug", CDebug);
 
 
-            //PunishmentManager.DisposeExceededRecords();
+            PunishmentManager.DisposeExceeded();
 
             var Address = $"{Dns.GetHostEntry(Dns.GetHostName()).AddressList.ToList().Find(ip => ip.AddressFamily == AddressFamily.InterNetwork)}:{Config.ServerPort}";
 
@@ -234,8 +233,9 @@ namespace DefectivelyServer.Internal
 
                 ListenerManager.InvokeEvent(Event.ServerStopped, null);
                 foreach (var Extension in ExtensionManager.Extensions) {
+                    PrintToConsole($"[ExtensionSystem] Disabling \"{Extension.Name}\"...\n", Dark);
                     Extension.OnDisable();
-                    PrintToConsole($"[{Extension.Name}] Extension disabled.\n", Dark);
+                    PrintToConsole($"[ExtensionSystem] \"{Extension.Name}\" disabled.\n", Error);
                 }
 
                 try {
@@ -262,56 +262,10 @@ namespace DefectivelyServer.Internal
                     if (DRawStreamContent[0] == Enumerations.Action.GetServerMetaData.ToString()) {
                         Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} requested meta data.", "NTWK");
 
-                        Connection.SetRawStreamContent(Cryptography.RSAEncrypt(JsonConvert.SerializeObject(GetMetaData()), PreServiceProvider));
-
+                        Connection.SetRawStreamContent(JsonConvert.SerializeObject(GetMetaData()));
                         Connection.Dispose();
 
-
-                        //PunishmentManager.DisposeExceededRecords();
-
-
-                    } else if (DRawStreamContent[0] == Enumerations.Action.HyperConnect.ToString()) {
-
-                        var AesData = new AesData {
-                            Key = Convert.FromBase64String(DRawStreamContent[1]),
-                            IV = Convert.FromBase64String(DRawStreamContent[2])
-                        };
-
-                        Connection.AesData = AesData;
-                        Connection.HmacKey = Convert.FromBase64String(DRawStreamContent[3]);
-
-                        var AuthData = Connection.GetStreamContent().Split('|');
-                        var AccountIdData = AuthData[0].Split(':').ToList();
-                        AccountIdData.Add("offset");
-
-                        if (Helper.AccountExists(AccountIdData[0])) {
-
-                            var Account = Helper.GetAccount(AccountIdData[0]);
-
-                            if (Account.Password == AuthData[1] && Account.AccountHasLuvaValue("defectively.hyperConnect")) {
-                                Connection.Owner = HyperAccount;
-                                Connection.Channel = Defectively;
-                                Connections.Add(Connection);
-                                var ListeningThread = new Thread(Listen);
-                                ListeningThread.Start(Connection);
-                                Connection.SessionId = Helpers.GenerateRandomId(16);
-                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "hej", Connection.SessionId, Connection.Owner.Id));
-                                Defectively.MemberIds.Add(Account.Id);
-                                ChannelManager.SendChannelList();
-
-                                PrintToConsole($"{Connection.Owner.Name} (@{Connection.Owner.Id}) joined. <{((IPEndPoint) FClient.Client.RemoteEndPoint).Address}>\n", Success);
-                                Eskaemo.Trace($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} assigned to \"{Connection.Owner.Id}\".", "NTWK");
-                                Eskaemo.TraceIndented($"SessionId: {Connection.SessionId}");
-                            } else {
-                                Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} pretended to be \"{AuthData[0]}\" but didn't provided the correct password.", "NTWK");
-                                Eskaemo.TraceIndented($"Connection from {((IPEndPoint) FClient.Client.RemoteEndPoint).Address} refused.");
-                                Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "authentificationFailed"));
-                            }
-                        } else {
-                            Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} pretended to be \"{AuthData[0]}\" but this account is unknown.", "NTWK");
-                            Connection.SetStreamContent(string.Join("|", Enumerations.Action.LoginResult, "accountUnknown"));
-                        }
-
+                        PunishmentManager.DisposeExceeded();
                     } else {
 
                         Eskaemo.Trace($"{((IPEndPoint) FClient.Client.RemoteEndPoint).Address} started the login procedure.", "NTWK");
@@ -334,17 +288,22 @@ namespace DefectivelyServer.Internal
 
                             var Account = Helper.GetAccount(AccountIdData[0]);
 
-                            if (Connections.Any(c => c.Owner.Id == AccountIdData[0].ToString())) {
-                                continue;
-                            }
-
                             if (Account.Password == AuthData[1]) {
+
+                                if (Connections.Any(c => c.Owner == Account)) {
+                                    Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Duplicated));
+                                    continue;
+                                }
 
                                 ListenerManager.InvokeEvent(Event.ClientConnect, ((IPEndPoint) FClient.Client.RemoteEndPoint).Address.ToString(), AccountIdData[0], AccountIdData[1]);
 
-                                // TODO
-
-                                //var PunishmentId = PunishmentManager.CheckForRecords(Account.Id, Enumerations.PunishmentType.Bann, Enumerations.PunishmentType.BannTemporarily);
+                                if (PunishmentManager.CheckForAny(Account.Id)) {
+                                    var Punishment = PunishmentManager.GetPunishment(Account.Id);
+                                    if (Punishment.Type == Enumerations.PunishmentType.Ban || Punishment.Type == Enumerations.PunishmentType.PermanentBan) {
+                                        Connection.SetStreamContent(string.Join("|", Enumerations.Action.SetState, Enumerations.ClientState.Banned, JsonConvert.SerializeObject(Punishment)));
+                                        continue;
+                                    }
+                                }
 
                                 //if (PunishmentId != "-1") {
                                 //var Punishment = PunishmentManager.GetRecord(PunishmentId);
@@ -475,24 +434,6 @@ namespace DefectivelyServer.Internal
                     }
 
                     var Packet = Connection.GetStreamContent().Split('|');
-
-                    // TODO
-
-                    //var PunishmentId = PunishmentManager.CheckForRecords(Connection.Owner.Id, Enumerations.PunishmentType.Mute);
-
-                    //if (PunishmentId != "-1") {
-                    //    var RemainingTime = PunishmentManager.GetRecord(PunishmentId).EndDate.Subtract(DateTime.Now);
-
-                    //    var Message = new MessagePacket {
-                    //        Time = DateTime.Now.ToShortTimeString(),
-                    //        Type = Enumerations.MessageType.Center,
-                    //        RankColor = "#FC3539",
-                    //        Content = $"Your mute still lasts {RemainingTime.Days} days, {RemainingTime.Hours} hours, {RemainingTime.Minutes} minutes and {RemainingTime.Seconds} seconds."
-                    //    };
-
-                    //    SendMessagePacketTo(Connection.Owner.Id, Message);
-                    //    continue;
-                    //}
 
                     try {
                         var Type = (Enumerations.Action) Enum.Parse(typeof(Enumerations.Action), Packet[0]);
@@ -676,6 +617,26 @@ namespace DefectivelyServer.Internal
                         case Enumerations.Action.HyperCommunicate:
 
                             break;
+                        case Enumerations.Action.SetState:
+                            var NewRecord = new Punishment();
+                            if (Packet[1] == Enumerations.ClientState.Banned.ToString()) {
+                                if (Connection.Owner.AccountHasLuvaValue("defectively.canBan")) {
+                                    NewRecord = JsonConvert.DeserializeObject<Punishment>(Packet[2]);
+                                    if (NewRecord.Type == Enumerations.PunishmentType.PermanentBan) {
+                                        if (Connection.Owner.AccountHasLuvaValue("defectively.canBanPermanent")) {
+                                            PunishmentManager.Register(NewRecord);
+                                        } else {
+                                            SendLuvaNotice("defectively.canBanPermanent", Connection);
+                                        }
+                                    } else {
+                                        PunishmentManager.Register(NewRecord);
+                                    }
+                                } else {
+                                    SendLuvaNotice("defectively.canBan", Connection);
+                                }
+                            }
+
+                            break;
                         }
 
                         while (MessagePacketQueue.Count > 0) {
@@ -737,9 +698,6 @@ namespace DefectivelyServer.Internal
             OnConsoleColorChanged(new ConsoleColorEventArgs(style.Foreground, style.Background));
             OnConsoleMessageReceived(new ConsoleMessageEventArgs(content));
             OnConsoleColorChanged(new ConsoleColorEventArgs(SystemColors.WindowFrame, Color.White));
-
-            var Hyper = Connections.Find(c => c.Owner == HyperAccount);
-            Hyper?.SetStreamContent(string.Join("|", Enumerations.Action.HyperCommunicate, content, JsonConvert.SerializeObject(style)));
         }
 
         public string ComposePrefix(string accountId) {
@@ -749,7 +707,7 @@ namespace DefectivelyServer.Internal
         }
 
         public void SendPacketTo(string id, string packet) {
-            Connections.Find(c => c.Owner.Id == id).SetStreamContent(packet);
+            Connections.Find(c => c.Owner.Id == id)?.SetStreamContent(packet);
         }
 
         public void SendPacketToAll(string packet) {
@@ -769,7 +727,7 @@ namespace DefectivelyServer.Internal
         }
 
         public void SendMessagePacketTo(string id, MessagePacket packet) {
-            Connections.Find(c => c.Owner.Id == id).SetStreamContent(string.Join("|", Enumerations.Action.Plain, JsonConvert.SerializeObject(packet)));
+            Connections.Find(c => c.Owner.Id == id)?.SetStreamContent(string.Join("|", Enumerations.Action.Plain, JsonConvert.SerializeObject(packet)));
         }
 
         public void SendMessagePacketToAll(MessagePacket packet) {
@@ -787,9 +745,7 @@ namespace DefectivelyServer.Internal
         // TODO
 
         public void CreatePunishment(Punishment punishment) {
-            punishment.CreatorId = ServerAccount.Id;
-            //punishment.Id = PunishmentManager.GetRandomIdentifier(6);
-            //PunishmentManager.CreateRecord(punishment);
+            PunishmentManager.Register(punishment);
         }
 
         public Account GetAccountById(string id) {
@@ -800,11 +756,16 @@ namespace DefectivelyServer.Internal
             return Database.Ranks.Find(r => r.Id == id);
         }
 
-        // TODO
+        public Punishment GetPunishment(string accountId) {
+            return PunishmentManager.GetPunishment(accountId);
+        }
 
-        public Punishment GetPunishmentById(string id) {
-            //return PunishmentManager.GetRecord(id);
-            return null;
+        public bool CheckForPunishment(string accountId) {
+            return PunishmentManager.CheckForAny(accountId);
+        }
+
+        public void DisposePunishment(string accountId) {
+            PunishmentManager.Dispose(accountId);
         }
 
         public void InvokeInternalEvent(Event e, params object[] args) {

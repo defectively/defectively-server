@@ -37,7 +37,7 @@
     <ApplicationIcon>defectively.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Defectively, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Defectively, Version=0.0.6339.25539, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Dependencies\Defectively.dll</HintPath>
     </Reference>
@@ -127,7 +127,6 @@
     <Compile Include="Storage\Database\Values.cs" />
     <Compile Include="Storage\Localization\Helper.cs" />
     <Compile Include="Storage\Localization\Values.cs" />
-    <Compile Include="Version.cs" />
     <EmbeddedResource Include="Forms\AboutWindow.resx">
       <DependentUpon>AboutWindow.cs</DependentUpon>
     </EmbeddedResource>

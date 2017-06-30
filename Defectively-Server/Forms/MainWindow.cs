@@ -79,15 +79,17 @@ namespace DefectivelyServer.Forms
                 Server.ShowNotification(Notification);
             }
 
-            if (tbxInput.Text == "/c") {
-                var Channel = new Channel {
-                    Id = "team",
-                    JoinRestrictionMode = Enumerations.ChannelJoinMode.Default,
-                    Name = "Festival Team",
-                    OwnerId = "vainamo",
-                    Persistent = true
+            if (tbxInput.Text == "/p") {
+                var Punishment = new Punishment {
+                    Id = Helpers.GenerateRandomId(6),
+                    AccountId = "vainamo",
+                    CreatorId = "server",
+                    EndDate = new DateTime(2017, 5, 10, 15, 30, 0),
+                    Reason = "DEMO",
+                    Type = Enumerations.PunishmentType.Mute
                 };
-                ChannelManager.AddChannel(Channel);
+
+                PunishmentManager.Register(Punishment);
             }
 
             tbxInput.Clear();
